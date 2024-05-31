@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+import "errors/errors.proto";
+
+package api.biz.v1;
+
+option go_package = "api/biz/v1;v1";
+
+
+enum CarPlayerErrorReason {
+  // 设置缺省错误码
+  option (errors.default_code) = 500;
+
+  // 为某个枚举单独设置错误码
+  CAR_NOT_FOUND = 0 [(errors.code) = 400];
+  BAND_REPEAT = 1 [(errors.code) = 400];
+  BAND_OTHER_PLAYER_BAND = 2 [(errors.code) = 400];
+  UNBAND_REPEAT = 3 [(errors.code) = 400];
+  UNBAND_NOT_BANDED = 4 [(errors.code) = 400];
+}

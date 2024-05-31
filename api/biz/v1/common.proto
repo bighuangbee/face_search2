@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+package api.biz.v1;
+
+option go_package = "api/biz/v1;v1";
+
+
+message CommonReply {
+  int32 code = 1;
+  string message = 2;
+  google.protobuf.Any data = 3;
+  string reason = 4;
+};

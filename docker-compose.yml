@@ -1,0 +1,26 @@
+version: '3.1'
+
+services:
+
+  face_dev:
+    build: app/internal/service/face/face_recognize
+    container_name: face_dev
+    image: face_dev:latest
+    mac_address: 02:42:ac:12:00:02
+    volumes:
+      - ./:/root/face_recognize
+      - ./data:/app/data
+    ports:
+      - 6002:6002
+    tty: true
+
+  face_svc:
+    build: ./
+    container_name: face_srv
+    image: face_srv:latest
+    mac_address: 02:42:ac:12:00:02
+    volumes:
+      - ./:/root/face_recognize
+      - ./data:/app/data
+    ports:
+      - 6003:6002

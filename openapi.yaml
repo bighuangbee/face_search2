@@ -1,0 +1,166 @@
+# Generated with protoc-gen-openapi
+# https://github.com/google/gnostic/tree/master/cmd/protoc-gen-openapi
+
+openapi: 3.0.3
+info:
+    title: CarPlayer API
+    version: 0.0.1
+paths:
+    /api/car/list/{status}:
+        get:
+            tags:
+                - CarPlayer
+            description: 获取空闲的小车
+            operationId: CarPlayer_GetCarList
+            parameters:
+                - name: status
+                  in: path
+                  required: true
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.biz.v1.CarList'
+    /api/car/registe:
+        post:
+            tags:
+                - CarPlayer
+            description: 小车注册
+            operationId: CarPlayer_Registe
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.biz.v1.CarRegisteRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.biz.v1.EmptyReply'
+    /api/car/{carId}:
+        get:
+            tags:
+                - CarPlayer
+            description: 获取小车信息
+            operationId: CarPlayer_GetCar
+            parameters:
+                - name: carId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.biz.v1.CarInfo'
+    /api/player/bind-car:
+        post:
+            tags:
+                - CarPlayer
+            description: 玩家绑定小车
+            operationId: CarPlayer_BindCar
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.biz.v1.BindCarRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.biz.v1.CarInfo'
+    /api/player/unbind-car:
+        post:
+            tags:
+                - CarPlayer
+            description: 玩家解绑小车
+            operationId: CarPlayer_UnbindCar
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.biz.v1.BindCarRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.biz.v1.EmptyReply'
+components:
+    schemas:
+        api.biz.v1.BindCarRequest:
+            type: object
+            properties:
+                carId:
+                    type: string
+                mode:
+                    type: integer
+                    format: int32
+                userId:
+                    type: integer
+                    format: int32
+                username:
+                    type: string
+        api.biz.v1.CarInfo:
+            type: object
+            properties:
+                carId:
+                    type: string
+                carStatus:
+                    type: integer
+                    format: int32
+                registeAt:
+                    type: string
+                    format: date-time
+                lastRegisteAt:
+                    type: string
+                    format: date-time
+                player:
+                    $ref: '#/components/schemas/api.biz.v1.Player'
+                carBindStatus:
+                    type: integer
+                    format: int32
+        api.biz.v1.CarList:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.biz.v1.CarInfo'
+        api.biz.v1.CarRegisteRequest:
+            type: object
+            properties:
+                carId:
+                    type: string
+        api.biz.v1.EmptyReply:
+            type: object
+            properties: {}
+        api.biz.v1.Player:
+            type: object
+            properties:
+                username:
+                    type: string
+                userId:
+                    type: integer
+                    format: int32
+                bindAt:
+                    type: string
+                    format: date-time
+tags:
+    - name: CarPlayer

@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "validate/validate.proto";
+
+package api.biz.v1;
+
+option go_package = "api/biz/v1;v1";
+
+service FaceRecognize {
+
+  //人脸注册-从默认目录读取注册图
+  rpc RegisteByPath (EmptyRequest) returns (EmptyReply){
+    option (google.api.http) = {
+      post: "/face/registe/path"
+      body:"*"
+    };
+  };
+
+  //人脸注销-所有人脸
+  rpc UnRegisteAll (EmptyRequest) returns (EmptyReply) {
+    option (google.api.http) = {
+      post: "/face/unregiste/all"
+      body:"*"
+    };
+  };
+
+
+}
+
+message  EmptyReply{
+}
+message  EmptyRequest{
+}
+
+
+message ImageType{
+  int32 JPG = 1;
+  int32 PNG = 2;
+}
+
+message struct{
+  ImageType imageType = 1;
+  bytes data = 2;
+  bytes size = 3;
+  int32 width =4;
+  int32 height =5;
+}
+
+
+message SearchResultReply{
+  repeated SearchResult results = 1;
+}
+message SearchResult{
+  string filename = 1;
+  float match = 2;
+}

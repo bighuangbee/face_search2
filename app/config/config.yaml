@@ -1,0 +1,29 @@
+name: "ar_tank"
+version: "v1.0"
+
+server:
+  env: "dev"
+  http:
+    addr: 0.0.0.0:6002
+    timeout: 60s
+
+logger:
+  path: ./logs
+
+carPlayer:
+  playDuration: 303 #游戏时长 秒
+  carNotActiveTimeout: 30 #小车标记为未持续注册状态的超时时间
+  carOfflineTimeout: 60 #小车标记为下线状态的超时时间
+
+discovery:
+  ipAddr: 192.168.18.66
+  port: 8848
+  timeout: 5
+  onOff: true
+
+microServices:
+  baseService:
+    name:  "base-service.grpc"
+    timeout:  60
+    endpoint:  "localhost:9001"
+    isLocal:  true
