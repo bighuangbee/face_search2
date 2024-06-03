@@ -1,9 +1,14 @@
 package util
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 // GetFilesWithExtensions 读取指定目录下的文件，并过滤出指定扩展名的文件
@@ -44,4 +49,49 @@ func HasValidExtension(file string, extensions []string) bool {
 func GetFileName(filePath string) string {
 	fileName := filepath.Base(filePath)
 	return strings.TrimSuffix(fileName, filepath.Ext(fileName))
+}
+
+func DecodeGBKToUTF8(input []byte) (string, error) {
+	decoder := simplifiedchinese.GBK.NewDecoder()
+	utf8Bytes, _, err := transform.Bytes(decoder, input)
+	if err != nil {
+		return "", err
+	}
+	return string(utf8Bytes), nil
+}
+
+// IsUTF8 checks if a byte slice is valid UTF-8 encoded
+func IsUTF8(data []byte) bool {
+	return utf8.Valid(data)
+}
+
+// DecodeToUTF8 tries to decode a byte slice using the provided decoder
+func DecodeToUTF8(data []byte, decoder transform.Transformer) (string, error) {
+	utf8Bytes, _, err := transform.Bytes(decoder, data)
+	if err != nil {
+		return "", err
+	}
+	return string(utf8Bytes), nil
+}
+
+// detectAndDecode tries to detect if the input is in GBK or GB2312, and decodes to UTF-8
+func DetectAndDecode(input []byte) (string, error) {
+	// First, check if it's already UTF-8
+	if IsUTF8(input) {
+		return string(input), nil
+	}
+
+	// Try decoding with GBK
+	decodedStr, err := DecodeToUTF8(input, simplifiedchinese.GBK.NewDecoder())
+	if err == nil {
+		return decodedStr, nil
+	}
+
+	// Try decoding with HZGB2312
+	decodedStr, err = DecodeToUTF8(input, simplifiedchinese.HZGB2312.NewDecoder())
+	if err == nil {
+		return decodedStr, nil
+	}
+
+	return "", fmt.Errorf("failed to decode input: %v", input)
 }

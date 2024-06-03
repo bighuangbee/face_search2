@@ -35,11 +35,15 @@ type FaceRecognizeApp struct {
 const FACE_REGISTE_PATH = "/app/face_registe_path"
 
 func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data) *FaceRecognizeApp {
-	os.MkdirAll(FACE_REGISTE_PATH, 0755)
+	face_registe_path := os.Getenv("face_registe_path")
+	if face_registe_path == "" {
+		face_registe_path = FACE_REGISTE_PATH
+	}
+	os.MkdirAll(face_registe_path, 0755)
 
 	face_models_path := os.Getenv("face_models_path")
 	fmt.Println("face_models_path 1 ", face_models_path)
-	if face_models_path != "" {
+	if face_models_path == "" {
 		face_models_path = "/root/face_search/libs/models/"
 	}
 	fmt.Println("face_models_path 2 ", face_models_path)

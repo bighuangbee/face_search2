@@ -13,6 +13,13 @@ package face_wrapper
 int modelPath(const char* model_path){
 	printf("modelPath   Loading model from: %s\n", model_path);
 }
+
+void printImageInfo(ImageInfo* info, int count) {
+    for (int i = 0; i < count; i++) {
+        printf("C.ImageInfo %d: filename = %s, similarity = %f\n", i, info[i].filename, info[i].similarity);
+    }
+}
+
 */
 import "C"
 import (
@@ -42,8 +49,21 @@ func Registe(path string) (regNumber int, err error) {
 		return 0, err
 	}
 
+	l := len(files)
+	fmt.Println("files length: ", l)
+	for i, file := range files {
+		fmt.Println(i+1, file)
+		fff, err := util.DetectAndDecode([]byte(file))
+		fmt.Println("utf8: ", i+1, err, fff)
+
+	}
+
+	if l == 0 {
+		l = 100
+	}
+
 	var failedNum C.int
-	var failInfo = make([]C.ImageInfo, len(files))
+	var failInfo = make([]C.ImageInfo, l)
 
 	ret := C.hiarAddingImages(C.CString(path), &failInfo[0], &failedNum)
 	if ret != 1 {
@@ -59,23 +79,60 @@ func Registe(path string) (regNumber int, err error) {
 	return int(failedNum), nil
 }
 
-func Search(image *Image) (results []*FaceEntity) {
-	cImage := NewC_ImageData(image)
+func Search2(image *Image) [FACE_MAX_RESULT]C.ImageInfo {
 
-	var info [FACE_MAX_RESULT]C.ImageInfo
+	//cImage := NewC_ImageData(image)
+
+	var imageData C.ImageData
+	//todo free
+
+	imageData.data = (*C.uchar)((unsafe.Pointer)(&image.Data[0]))
+	imageData.data_len = C.int(len(image.Data))
+	imageData.width = C.int(image.Width)
+	imageData.height = C.int(image.Height)
+	imageData.data_type = C.enum_ImageDataType(image.DataType)
+
+	var info = [FACE_MAX_RESULT]C.ImageInfo{}
 	var v_len = C.int(FACE_MAX_RESULT)
+	resultNum := C.hiarQuery(&imageData, &info[0], v_len)
+	fmt.Println("hiarQuery resultNum ", resultNum, info[0])
+	if int(resultNum) == 0 {
+		return info
+	}
+	return info
+}
 
-	resultNum := C.hiarQuery(cImage, &info[0], v_len)
+func Search(image *Image) (results []*FaceEntity) {
+
+	var imageData C.ImageData
+	imageData.data = (*C.uchar)((unsafe.Pointer)(&image.Data[0]))
+	imageData.data_len = C.int(len(image.Data))
+	imageData.width = C.int(image.Width)
+	imageData.height = C.int(image.Height)
+	imageData.data_type = C.enum_ImageDataType(image.DataType)
+
+	var info = make([]C.ImageInfo, FACE_MAX_RESULT)
+	var v_len = C.int(FACE_MAX_RESULT)
+	resultNum := C.hiarQuery(&imageData, &info[0], v_len)
+	fmt.Println("hiarQuery resultNum ", resultNum, info[0])
 	if int(resultNum) == 0 {
 		return
 	}
 
-	for i := 0; i < int(resultNum); i++ {
-		fmt.Println(C.GoString(&info[i].filename[0]), float32(info[i].similarity))
-		results = append(results, &FaceEntity{
-			RegFilename: C.GoString(&info[i].filename[0]),
-			Match:       float32(info[i].similarity),
-		})
+	C.printImageInfo(&info[0], resultNum)
+
+	for i, imageInfo := range info {
+		if i < int(resultNum) {
+			filename := C.GoString(&imageInfo.filename[0])
+			match := float32(imageInfo.similarity)
+			fmt.Println("【go range】 filename:", filename, "match:", match)
+
+			results = append(results, &FaceEntity{
+				RegFilename: C.GoString(&imageInfo.filename[0]),
+				Match:       float32(imageInfo.similarity),
+			})
+		}
+
 	}
 
 	return

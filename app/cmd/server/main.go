@@ -4,9 +4,7 @@ import (
 	"flag"
 	"github.com/bighuangbee/face_search2/pkg/conf"
 	logger2 "github.com/bighuangbee/face_search2/pkg/logger"
-	"github.com/bighuangbee/face_search2/pkg/util/kitGrpc"
 	"github.com/go-kratos/kratos/v2"
-	"github.com/nacos-group/nacos-sdk-go/clients/naming_client"
 	"go.uber.org/zap/zapcore"
 	"os"
 
@@ -33,7 +31,7 @@ func init() {
 	flag.StringVar(&flagconf, "conf", "../../config", "config path, eg: -conf config.yaml")
 }
 
-func newApp(logger log.Logger, hs *http.Server, namingCli naming_client.INamingClient) *kratos.App {
+func newApp(logger log.Logger, hs *http.Server) *kratos.App {
 	return kratos.New(
 		kratos.ID(id),
 		kratos.Name(Name),
@@ -84,21 +82,7 @@ func main() {
 		//"span.id", tracing.SpanID(),
 	)
 
-	var naming naming_client.INamingClient
-	if bc.Discovery.Enable {
-		var err error
-		naming, err = kitGrpc.NewNamingClient(
-			bc.Discovery.Addr,
-			uint64(bc.Discovery.Port),
-			kitGrpc.WithLogLevel("info"),
-			kitGrpc.WithNamespaceID(bc.Name),
-		)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	app, cleanup, err := wireApp(&bc, logger, naming)
+	app, cleanup, err := wireApp(&bc, logger)
 	if err != nil {
 		panic(err)
 	}

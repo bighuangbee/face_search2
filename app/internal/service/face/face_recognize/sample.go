@@ -22,22 +22,26 @@ func main() {
 
 	fmt.Println("face_wrapper.Registe, regNum", regNum)
 
-	imageFile, err := ioutil.ReadFile(basePath + "libs/data/query.jpg")
+	targetFile := basePath + "libs/data/query.jpg"
+	//targetFile := basePath + "libs/data/gallery/DSC08060.JPG"
+	imageFile, err := ioutil.ReadFile(targetFile)
 	if err != nil {
 		fmt.Println("ReadFile", err)
 		return
 	}
 
 	targetFace := face_wrapper.Image{
-		DataType: face_wrapper.GetImageType(basePath + "libs/data/query.jpg"),
+		DataType: face_wrapper.GetImageType(targetFile),
 		Size:     len(imageFile),
 		Data:     imageFile,
 	}
 
+	//face_wrapper.Search2(&targetFace)
+
 	results := face_wrapper.Search(&targetFace)
 	if len(results) > 0 {
 		for key, result := range results {
-			fmt.Println("face_wrapper.Search result:", key+1, result.RegFilename, result.Match)
+			fmt.Println("【Search】face_wrapper.Search result:", key+1, result.RegFilename, result.Match)
 		}
 	} else {
 		fmt.Println("搜索不到结果")

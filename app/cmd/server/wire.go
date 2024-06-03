@@ -13,10 +13,9 @@ import (
 	"github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/google/wire"
-	"github.com/nacos-group/nacos-sdk-go/clients/naming_client"
 )
 
 // wireApp init kratos application.
-func wireApp(*conf.Bootstrap, log.Logger, naming_client.INamingClient) (*kratos.App, func(), error) {
+func wireApp(*conf.Bootstrap, log.Logger) (*kratos.App, func(), error) {
 	panic(wire.Build(server.ProviderSet, service.ProviderSet, newApp, data.ProviderSet))
 }

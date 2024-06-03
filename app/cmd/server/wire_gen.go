@@ -13,7 +13,6 @@ import (
 	"github.com/bighuangbee/face_search2/pkg/conf"
 	"github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/log"
-	"github.com/nacos-group/nacos-sdk-go/clients/naming_client"
 )
 
 import (
@@ -23,14 +22,14 @@ import (
 // Injectors from wire.go:
 
 // wireApp init kratos application.
-func wireApp(bootstrap *conf.Bootstrap, logger log.Logger, iNamingClient naming_client.INamingClient) (*kratos.App, func(), error) {
-	dataData, err := data.NewData(bootstrap, logger, iNamingClient)
+func wireApp(bootstrap *conf.Bootstrap, logger log.Logger) (*kratos.App, func(), error) {
+	dataData, err := data.NewData(bootstrap, logger)
 	if err != nil {
 		return nil, nil, err
 	}
 	faceRecognizeApp := face.NewFaceRecognizeApp(logger, bootstrap, dataData)
 	httpServer := server.NewHTTPServer(bootstrap, logger, faceRecognizeApp)
-	app := newApp(logger, httpServer, iNamingClient)
+	app := newApp(logger, httpServer)
 	return app, func() {
 	}, nil
 }

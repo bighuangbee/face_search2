@@ -37,7 +37,10 @@ RUN go mod download
 
 WORKDIR /root/face_search
 
-RUN go get  github.com/bighuangbee/face_search2/api/biz/v1
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/face_search/libs/
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/face_search/libs/sdk/lib/
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/face_search/libs/thirdparty/onnxruntime/lib/
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/face_search/libs/thirdparty/opencv4-ffmpeg/lib/
 
 RUN go mod tidy
 RUN cd app/cmd/server && GOOS=linux GOARCH=amd64 go build -o srv-bin .
@@ -71,7 +74,7 @@ WORKDIR /app
 
 COPY --from=builder /root/face_search/libs /app/libs
 COPY --from=builder /root/face_search/app/cmd/server/srv-bin /app/srv-bin
-COPY --from=builder /root/face_search/app/biz/config/config.yaml /app/conf/config.yaml
+COPY --from=builder /root/face_search/app/config/config.yaml /app/conf/config.yaml
 
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/app/libs/
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/app/libs/sdk/lib/
@@ -80,6 +83,8 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/app/libs/thirdparty/opencv4-ffmpeg/lib/
 
 ENV GODEBUG=cgocheck=0
 ENV CGO_ENABLED=1
+
+ENV face_models_path=/app/libs/models
 
 # 暴露22端口
 EXPOSE 22
