@@ -25,12 +25,13 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"github.com/bighuangbee/face_search2/pkg/util"
+	"path/filepath"
 	"strconv"
 	"unsafe"
 )
 
 const FACE_MAX_RESULT = 20
+const OK = C.int(1)
 
 var PictureExt = []string{".png", ".jpg", ".jpeg"}
 
@@ -42,24 +43,11 @@ func Init(modelPath string, logFilename string) error {
 	return nil
 }
 
-func Registe(path string) (regNumber int, err error) {
+func Registe(path string, registePictureFile []string) (failedPictureFile []string, err error) {
 
-	files, err := util.GetFilesWithExtensions(path, PictureExt)
-	if err != nil {
-		return 0, err
-	}
-
-	l := len(files)
-	fmt.Println("files length: ", l)
-	for i, file := range files {
-		fmt.Println(i+1, file)
-		fff, err := util.DetectAndDecode([]byte(file))
-		fmt.Println("utf8: ", i+1, err, fff)
-
-	}
-
+	l := len(registePictureFile)
 	if l == 0 {
-		l = 100
+		l = 1
 	}
 
 	var failedNum C.int
@@ -67,16 +55,32 @@ func Registe(path string) (regNumber int, err error) {
 
 	ret := C.hiarAddingImages(C.CString(path), &failInfo[0], &failedNum)
 	if ret != 1 {
-		return 0, errors.New("【Registe】hiarAddingImages error, retCode:" + strconv.Itoa(int(ret)))
+		return nil, errors.New("【Registe】hiarAddingImages error, retCode:" + strconv.Itoa(int(ret)))
 	}
 
-	fmt.Println("failInfo , failedNum:", failedNum)
+	fmt.Println("hiarAddingImages , failedNum:", failedNum)
 
 	for i := 0; i < int(failedNum); i++ {
-		fmt.Println("failInfo failed image: ", C.GoString(&failInfo[i].filename[0]))
+		fmt.Println("hiarAddingImages failed image: ", C.GoString(&failInfo[i].filename[0]))
+		failedPictureFile = append(failedPictureFile, C.GoString(&failInfo[i].filename[0]))
 	}
 
-	return int(failedNum), nil
+	return failedPictureFile, nil
+}
+
+func RegisteSingle(image *Image, filename string) (err error) {
+	var cImage C.ImageData
+	cImage.data = (*C.uchar)((unsafe.Pointer)(&image.Data[0]))
+	cImage.data_len = C.int(len(image.Data))
+	cImage.width = C.int(image.Width)
+	cImage.height = C.int(image.Height)
+	cImage.data_type = C.enum_ImageDataType(image.DataType)
+
+	fmt.Println("filepath.Base(filename)", filepath.Base(filename))
+	if ret := C.hiarAddingImage(&cImage, C.CString(filepath.Base(filename))); ret != OK {
+		return errors.New("注册失败" + strconv.Itoa(int(ret)))
+	}
+	return nil
 }
 
 func Search2(image *Image) [FACE_MAX_RESULT]C.ImageInfo {
@@ -119,7 +123,7 @@ func Search(image *Image) (results []*FaceEntity) {
 		return
 	}
 
-	C.printImageInfo(&info[0], resultNum)
+	//C.printImageInfo(&info[0], resultNum)
 
 	for i, imageInfo := range info {
 		if i < int(resultNum) {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/text/encoding/simplifiedchinese"
@@ -94,4 +95,33 @@ func DetectAndDecode(input []byte) (string, error) {
 	}
 
 	return "", fmt.Errorf("failed to decode input: %v", input)
+}
+
+// 创建或打开当前日期的文件，并写入内容
+func CreateOrOpenFile(filePath, content string) error {
+	// 获取当前日期字符串，格式为2023-03-27
+	date := time.Now().Format("2006-01-02")
+	// 构造完整的文件路径
+	fullPath := filepath.Join(filePath, date+".txt")
+
+	// 判断文件是否存在
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		// 文件不存在，创建文件
+		file, err := os.Create(fullPath)
+		if err != nil {
+			return err
+		}
+		defer file.Close() // 确保文件最后被关闭
+	}
+
+	// 打开文件进行写入
+	file, err := os.OpenFile(fullPath, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// 写入内容
+	_, err = file.WriteString(content + "\n")
+	return err
 }

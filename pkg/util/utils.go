@@ -310,3 +310,12 @@ func IsContainInt(target int, List []int) bool {
 	}
 	return false
 }
+
+func GetLocTime() string {
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		return time.Now().Format(time.DateTime)
+	}
+
+	return time.Now().In(loc).Format(time.DateTime)
+}
