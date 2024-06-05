@@ -46,12 +46,13 @@ extern "C" {
 
         /**
         adding images
-        @param images_dir        the path of images'set.
-        @param fail_images       [output]the buffer of adding failure images.
-        @param fail_images       [input] the length of fail_images, [output] the number of adding falure images.
+        @param input_list      [input] list of image filename which will be registed.fg.["D:/hiar/gallery/1.jpg", "D:/hiar/gallery/2.jpg"]
+        @param len_input       [input] the lenth of input_list array.
+        @param ok_list         [output] the buffer of adding successful images.
+        @param ok_ok           [input] the length of ok_list buffer,
+        @return  int           the number of adding successful images.
         */
-        int hiarAddingImages(const char* images_dir, ImageInfo* fail_images, int* len_fail_images);
-
+        int hiarAddingImages(const ImageInfo* input_list, const int len_input, ImageInfo* ok_list, const int len_ok);
         /**
         adding images
         @param image        the inputing image include more than one faces.

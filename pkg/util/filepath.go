@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"golang.org/x/text/encoding/simplifiedchinese"
@@ -98,16 +97,12 @@ func DetectAndDecode(input []byte) (string, error) {
 }
 
 // 创建或打开当前日期的文件，并写入内容
-func CreateOrOpenFile(filePath, content string) error {
-	// 获取当前日期字符串，格式为2023-03-27
-	date := time.Now().Format("2006-01-02")
-	// 构造完整的文件路径
-	fullPath := filepath.Join(filePath, date+".txt")
+func CreateOrOpenFile(filename, content string) error {
 
 	// 判断文件是否存在
-	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		// 文件不存在，创建文件
-		file, err := os.Create(fullPath)
+		file, err := os.Create(filename)
 		if err != nil {
 			return err
 		}
@@ -115,7 +110,7 @@ func CreateOrOpenFile(filePath, content string) error {
 	}
 
 	// 打开文件进行写入
-	file, err := os.OpenFile(fullPath, os.O_APPEND|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}

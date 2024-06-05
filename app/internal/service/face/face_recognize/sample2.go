@@ -7,10 +7,9 @@ import (
 	"io/ioutil"
 )
 
+var basePath = "../../../../../"
+
 func main() {
-
-	var basePath = "../../../../../"
-
 	err := face_wrapper.Init("/root/face_search/libs/models/", "./hiarClusterLog.txt")
 	if err != nil {
 		panic(err)
@@ -22,22 +21,20 @@ func main() {
 		return
 	}
 
+	var regInfo []*face_wrapper.RegisteInfo
 	for _, filename := range files {
-		imageFile, err := ioutil.ReadFile(filename)
-		if err != nil {
-			fmt.Println("ReadFile", err, imageFile)
-			return
-		}
-		if err := face_wrapper.RegisteSingle(&face_wrapper.Image{
-			DataType: face_wrapper.GetImageType(filename),
-			Size:     len(imageFile),
-			Data:     imageFile,
-		}, filename); err != nil {
-			fmt.Println("face_wrapper.Registe, error", err, filename)
-			return
-		}
+		regInfo = append(regInfo, &face_wrapper.RegisteInfo{
+			Filename: filename,
+		})
+	}
 
-		fmt.Println("RegisteSingle 注册成功", filename)
+	if err := face_wrapper.Registe(regInfo); err != nil {
+		fmt.Println("face_wrapper.Registe", err)
+		return
+	}
+
+	for i, info := range regInfo {
+		fmt.Println("注册结果", i+1, info.Time, info.Ok, info.Filename)
 	}
 
 	targetFile := basePath + "libs/data/query.jpg"
@@ -57,16 +54,15 @@ func main() {
 	results := face_wrapper.Search(&targetFace)
 	if len(results) > 0 {
 		for key, result := range results {
-			fmt.Println("【Search】face_wrapper.Search result:", key+1, result.RegFilename, result.Match)
+			fmt.Println("【Search】人脸检索结果:", key+1, result.RegFilename, result.Match)
 		}
 	} else {
-		fmt.Println("搜索不到结果, targetFile", targetFile)
+		fmt.Println("搜索不到结果")
 	}
 
-	fmt.Println("注销人脸")
+	fmt.Println("注销全部人脸")
 
-	//face_wrapper.UnRegiste(targetFile)
-	face_wrapper.UnRegiste(basePath + "libs/data/gallery/DSC08060.JPG")
+	face_wrapper.UnRegisteAll()
 
 	results2 := face_wrapper.Search(&targetFace)
 	if len(results2) > 0 {
@@ -76,4 +72,5 @@ func main() {
 	} else {
 		fmt.Println("搜索不到结果")
 	}
+
 }

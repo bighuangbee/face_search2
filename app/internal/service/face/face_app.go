@@ -39,25 +39,29 @@ type FaceRecognizeApp struct {
 const FACE_REGISTE_PATH = "/app/face_registe_path"
 const FACE_REGISTE_LOGS = "/app/face_registe_logs"
 
-func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data) *FaceRecognizeApp {
-	face_registe_path := os.Getenv("face_registe_path")
-	if face_registe_path == "" {
-		face_registe_path = FACE_REGISTE_PATH
-	}
-	os.MkdirAll(face_registe_path, 0755)
-	os.MkdirAll(FACE_REGISTE_LOGS, 0755)
+var logFilename = FACE_REGISTE_LOGS + "/" + time.Now().Format("2006-01-02") + ".txt"
 
-	face_models_path := os.Getenv("face_models_path")
-	fmt.Println("face_models_path 1 ", face_models_path)
-	if face_models_path == "" {
-		face_models_path = "/root/face_search/libs/models/"
-	}
-	fmt.Println("face_models_path 2 ", face_models_path)
+func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data) *FaceRecognizeApp {
 
 	app := FaceRecognizeApp{
 		log:  log.NewHelper(log.With(logger, "module", "service/FaceRecognizeApp")),
 		data: data,
 	}
+
+	face_registe_path := os.Getenv("face_registe_path")
+	if face_registe_path == "" {
+		face_registe_path = FACE_REGISTE_PATH
+	}
+
+	face_models_path := os.Getenv("face_models_path")
+	if face_models_path == "" {
+		face_models_path = "/root/face_search/libs/models/"
+	}
+
+	os.MkdirAll(face_registe_path, 0755)
+	os.MkdirAll(FACE_REGISTE_LOGS, 0755)
+
+	app.log.Infow("face_registe_path", face_registe_path, "face_models_path", face_models_path)
 
 	if err := face_wrapper.Init(face_models_path, "./hiarClusterLog.txt"); err != nil {
 		app.log.Infow("【NewFaceRecognizeApp】face_wrapper init", err)
@@ -67,6 +71,7 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 	if err := face_wrapper.UnRegisteAll(); err != nil {
 		app.log.Warnw("【NewFaceRecognizeApp】UnRegisteAll ", err)
 	}
+
 	app.registeFaceOneByOne(true)
 
 	return &app
@@ -87,12 +92,10 @@ func (s *FaceRecognizeApp) RegisteByPath(context.Context, *pb.EmptyRequest) (*pb
 	return &pb.EmptyReply{}, nil
 }
 
-type registeResult struct {
-	Time     string `json:"time"`
-	Result   bool   `json:"result"`
-	Filename string `json:"filename"`
-}
-
+/**
+ * @Desc  逐个图片注册
+ * @Param reset 是否跳过已注册的图片
+ **/
 func (s *FaceRecognizeApp) registeFaceOneByOne(reset bool) {
 
 	t := time.Now()
@@ -104,12 +107,10 @@ func (s *FaceRecognizeApp) registeFaceOneByOne(reset bool) {
 		return
 	}
 
-	succMap := make(map[string]struct{})
-
+	//之前已注册的人脸
 	registedFaceMap := make(map[string]struct{})
 
-	logFilename := FACE_REGISTE_LOGS + "/" + time.Now().Format("2006-01-02") + ".txt"
-	file, err := os.Open(logFilename) // 打开文件
+	file, err := os.Open(logFilename)
 	if err != nil {
 		s.log.Warnw("os.Open error", err, "logFilename", logFilename)
 	}
@@ -117,7 +118,7 @@ func (s *FaceRecognizeApp) registeFaceOneByOne(reset bool) {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		line := registeResult{}
+		line := face_wrapper.RegisteInfo{}
 		if err := json.Unmarshal(scanner.Bytes(), &line); err != nil {
 			s.log.Errorw("json.Unmarshal", err)
 		}
@@ -128,9 +129,9 @@ func (s *FaceRecognizeApp) registeFaceOneByOne(reset bool) {
 		s.log.Warnw("canner registe file error", err, "logFilename", logFilename)
 	}
 
-	fmt.Println(registedFaceMap)
-
+	//注册的图片数量
 	registeNum := 0
+	//注册成功的数量
 	registeSuccNum := 0
 	for index, filename := range files {
 		if _, ok := registedFaceMap[filename]; ok && !reset {
@@ -149,20 +150,19 @@ func (s *FaceRecognizeApp) registeFaceOneByOne(reset bool) {
 			Data:     imageFile,
 		}, filename)
 
-		result := registeResult{
+		result := face_wrapper.RegisteInfo{
 			Filename: filename,
-			Result:   false,
+			Ok:       false,
 			Time:     util.GetLocTime(),
 		}
 
 		if regError == nil {
-			result.Result = true
-			succMap[filename] = struct{}{}
+			result.Ok = true
 			registeSuccNum++
 		}
 
 		str, _ := json.Marshal(&result)
-		if err := util.CreateOrOpenFile(FACE_REGISTE_LOGS, string(str)); err != nil {
+		if err := util.CreateOrOpenFile(logFilename, string(str)); err != nil {
 			s.log.Errorw("CreateOrOpenFile", err)
 		}
 		registeNum++
@@ -174,8 +174,7 @@ func (s *FaceRecognizeApp) registeFaceOneByOne(reset bool) {
 		}
 	}
 
-	s.log.Infow("【registeFaceOneByOne】end", "success", "registeNum", registeNum, "registeSuccNum", registeSuccNum, "duration", time.Since(t))
-
+	s.log.Infow("【registeFaceOneByOne】end", "success", "注册的图片数量", registeNum, "注册成功的数量", registeSuccNum, "耗时", time.Since(t))
 }
 
 func (s *FaceRecognizeApp) registeFace() {
@@ -189,35 +188,36 @@ func (s *FaceRecognizeApp) registeFace() {
 		return
 	}
 
-	results := []registeResult{}
+	var regInfo []*face_wrapper.RegisteInfo
+	for _, filename := range files {
+		regInfo = append(regInfo, &face_wrapper.RegisteInfo{
+			Filename: filename,
+		})
+	}
 
-	failedList, err := face_wrapper.Registe(FACE_REGISTE_PATH, files)
+	err = face_wrapper.Registe(regInfo)
 	if err != nil {
 		s.log.Errorw("【RegisteByPath】failed", err)
 	} else {
 		s.log.Infow("【RegisteByPath】end", "success", "duration", time.Since(t))
 	}
 
-	falidMap := make(map[string]struct{})
-	for _, v := range failedList {
-		falidMap[v] = struct{}{}
-	}
-
-	for _, filename := range files {
-		result := registeResult{
-			Filename: filename,
-			Result:   true,
+	for index, info := range regInfo {
+		result := face_wrapper.RegisteInfo{
+			Filename: info.Filename,
+			Ok:       info.Ok,
 			Time:     util.GetLocTime(),
 		}
-		if _, ok := falidMap[filename]; ok {
-			result.Result = false
-		}
-		results = append(results, result)
 
 		str, _ := json.Marshal(&result)
-
-		if err := util.CreateOrOpenFile(FACE_REGISTE_LOGS, string(str)); err != nil {
+		if err := util.CreateOrOpenFile(logFilename, string(str)); err != nil {
 			s.log.Errorw("CreateOrOpenFile", err)
+		}
+
+		if result.Ok {
+			s.log.Infow("注册成功", strconv.Itoa(index+1)+" "+info.Filename)
+		} else {
+			s.log.Infow("注册失败", strconv.Itoa(index+1)+" "+info.Filename)
 		}
 	}
 
@@ -227,6 +227,8 @@ func (s *FaceRecognizeApp) UnRegisteAll(ctx context.Context, req *pb.EmptyReques
 	if s.registering.Load() {
 		return nil, ErrorFaceRegistering
 	}
+
+	os.Remove(logFilename)
 
 	err := face_wrapper.UnRegisteAll()
 	if err != nil {

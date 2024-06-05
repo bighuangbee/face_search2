@@ -21,42 +21,35 @@ export GOROOT=/usr/local/go
 
 
 
-#构建dev
-docker build -t face_jq_dev -f Dockerfile.dev .
-docker run -d --runtime=nvidia --gpus all -p 22:22 -p 6001:6002 --privileged=true -v C:\face_registe_path:/app/face_registe_path --name face_jq_dev face_jq_dev
-
-构建app
-docker build -t face_jq_app .
-docker run -d --runtime=nvidia --gpus all -p 22:22 -p 6002:6002 --privileged=true -v C:\face_registe_path:/app/face_registe_path -v C:\face_registe_logs:/app/face_registe_logs --env face_models_path=/app/libs/models --name face_jq_app face_jq_app
 
 
 `
 {
-    "builder": {
-        "gc": {
-            "defaultKeepStorage": "20GB",
-            "enabled": true
-        }
-    },
-    "experimental": false,
-    "features": {
-        "buildkit": true
-    },
-    "insecure-registries": [
-        "192.168.3.57:82"
-    ],
-    "registry-mirrors": [
-"https://pee6w651.mirror.aliyuncs.com",
-        "https://registry.docker-cn.com",
-        "https://docker.mirrors.ustc.edu.cn",
-        "https://dockerproxy.com",
-        "https://mirror.ccs.tencentyun.com"
-    ],
-    "runtimes": {
-        "nvidia": {
-            "args": [],
-            "path": "nvidia-container-runtime"
-        }
+  "builder": {
+    "gc": {
+      "defaultKeepStorage": "20GB",
+      "enabled": true
     }
+  },
+  "experimental": false,
+  "features": {
+    "buildkit": true
+  },
+  "insecure-registries": [
+    "192.168.3.57:82"
+  ],
+  "registry-mirrors": [
+    "https://pee6w651.mirror.aliyuncs.com",
+    "https://registry.docker-cn.com",
+    "https://docker.mirrors.ustc.edu.cn",
+    "https://dockerproxy.com",
+    "https://mirror.ccs.tencentyun.com"
+  ],
+  "runtimes": {
+    "nvidia": {
+      "args": [],
+      "path": "nvidia-container-runtime"
+    }
+  }
 }
 `

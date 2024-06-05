@@ -24,7 +24,6 @@ void printImageInfo(ImageInfo* info, int count) {
 import "C"
 import (
 	"errors"
-	"fmt"
 	"path/filepath"
 	"strconv"
 	"unsafe"
@@ -35,6 +34,12 @@ const OK = C.int(1)
 
 var PictureExt = []string{".png", ".jpg", ".jpeg"}
 
+type RegisteInfo struct {
+	Time     string `json:"time"`
+	Ok       bool   `json:"ok"`
+	Filename string `json:"filename"`
+}
+
 func Init(modelPath string, logFilename string) error {
 	ret := C.hiarClusterInit(0.86, 20, C.CString(modelPath), C.CString(logFilename))
 	if ret != 1 {
@@ -43,29 +48,25 @@ func Init(modelPath string, logFilename string) error {
 	return nil
 }
 
-func Registe(path string, registePictureFile []string) (failedPictureFile []string, err error) {
-
-	l := len(registePictureFile)
-	if l == 0 {
-		l = 1
+func Registe(regInfo []*RegisteInfo) (err error) {
+	if len(regInfo) == 0 {
+		return errors.New("Input regInfo empty.")
 	}
 
-	var failedNum C.int
-	var failInfo = make([]C.ImageInfo, l)
+	var inputList = make([]C.ImageInfo, len(regInfo))
+	var succList = make([]C.ImageInfo, len(regInfo))
 
-	ret := C.hiarAddingImages(C.CString(path), &failInfo[0], &failedNum)
-	if ret != 1 {
-		return nil, errors.New("【Registe】hiarAddingImages error, retCode:" + strconv.Itoa(int(ret)))
+	for _, info := range regInfo {
+		inputList = append(inputList, C.ImageInfo{
+			filename: toCString(info.Filename),
+		})
 	}
 
-	fmt.Println("hiarAddingImages , failedNum:", failedNum)
-
-	for i := 0; i < int(failedNum); i++ {
-		fmt.Println("hiarAddingImages failed image: ", C.GoString(&failInfo[i].filename[0]))
-		failedPictureFile = append(failedPictureFile, C.GoString(&failInfo[i].filename[0]))
+	okNum := C.hiarAddingImages(&inputList[0], C.int(len(inputList)), &succList[0], C.int(len(regInfo)))
+	if okNum < 0 {
+		return errors.New("【Registe】hiarAddingImages error, retCode:" + strconv.Itoa(int(okNum)))
 	}
-
-	return failedPictureFile, nil
+	return nil
 }
 
 func RegisteSingle(image *Image, filename string) (err error) {
@@ -76,34 +77,10 @@ func RegisteSingle(image *Image, filename string) (err error) {
 	cImage.height = C.int(image.Height)
 	cImage.data_type = C.enum_ImageDataType(image.DataType)
 
-	fmt.Println("filepath.Base(filename)", filepath.Base(filename))
 	if ret := C.hiarAddingImage(&cImage, C.CString(filepath.Base(filename))); ret != OK {
 		return errors.New("注册失败" + strconv.Itoa(int(ret)))
 	}
 	return nil
-}
-
-func Search2(image *Image) [FACE_MAX_RESULT]C.ImageInfo {
-
-	//cImage := NewC_ImageData(image)
-
-	var imageData C.ImageData
-	//todo free
-
-	imageData.data = (*C.uchar)((unsafe.Pointer)(&image.Data[0]))
-	imageData.data_len = C.int(len(image.Data))
-	imageData.width = C.int(image.Width)
-	imageData.height = C.int(image.Height)
-	imageData.data_type = C.enum_ImageDataType(image.DataType)
-
-	var info = [FACE_MAX_RESULT]C.ImageInfo{}
-	var v_len = C.int(FACE_MAX_RESULT)
-	resultNum := C.hiarQuery(&imageData, &info[0], v_len)
-	fmt.Println("hiarQuery resultNum ", resultNum, info[0])
-	if int(resultNum) == 0 {
-		return info
-	}
-	return info
 }
 
 func Search(image *Image) (results []*FaceEntity) {
@@ -118,19 +95,13 @@ func Search(image *Image) (results []*FaceEntity) {
 	var info = make([]C.ImageInfo, FACE_MAX_RESULT)
 	var v_len = C.int(FACE_MAX_RESULT)
 	resultNum := C.hiarQuery(&imageData, &info[0], v_len)
-	fmt.Println("hiarQuery resultNum ", resultNum, info[0])
 	if int(resultNum) == 0 {
 		return
 	}
 
 	//C.printImageInfo(&info[0], resultNum)
-
 	for i, imageInfo := range info {
 		if i < int(resultNum) {
-			filename := C.GoString(&imageInfo.filename[0])
-			match := float32(imageInfo.similarity)
-			fmt.Println("【go range】 filename:", filename, "match:", match)
-
 			results = append(results, &FaceEntity{
 				RegFilename: C.GoString(&imageInfo.filename[0]),
 				Match:       float32(imageInfo.similarity),
@@ -144,27 +115,27 @@ func Search(image *Image) (results []*FaceEntity) {
 
 func UnRegisteAll() error {
 	var imageInfo C.ImageInfo
-
-	ret := C.hiarDelImages(&imageInfo, 0)
-	if ret != 1 {
+	if ret := C.hiarDelImages(&imageInfo, 0); ret != 1 {
 		return errors.New("【UnRegisteAll】hiarDelImages error, retCode:" + strconv.Itoa(int(ret)))
 	}
 	return nil
 }
 
-func UnRegiste() {
+func UnRegiste(filename string) error {
+	ret := C.hiarDelImages(&C.ImageInfo{
+		filename: toCString(filepath.Base(filename)),
+	}, 1)
+	if ret != 1 {
+		return errors.New("【UnRegiste】hiarDelImages error, retCode:" + strconv.Itoa(int(ret)))
+	}
+	return nil
+}
 
+// toCString 将Go字符串转换为[C.MAX_FILE_NAME_LEN]C.char数组
+func toCString(str string) [C.MAX_FILE_NAME_LEN]C.char {
 	var cFilename [C.MAX_FILE_NAME_LEN]C.char
-
-	cstr := C.CString("DSC08066.jpg")
+	cstr := C.CString(str)
 	defer C.free(unsafe.Pointer(cstr))
 	C.strncpy(&cFilename[0], cstr, C.MAX_FILE_NAME_LEN)
-
-	var imageInfo C.ImageInfo
-	imageInfo.filename = cFilename
-
-	fmt.Println("注销人脸", C.GoString(&imageInfo.filename[0]))
-
-	ret := C.hiarDelImages(&imageInfo, 1)
-	fmt.Println("hiarDelImages ret", ret)
+	return cFilename
 }
