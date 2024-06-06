@@ -36,10 +36,12 @@ type FaceRecognizeApp struct {
 	registering atomic.Bool
 }
 
-const FACE_REGISTE_PATH = "/app/face_registe_path"
-const FACE_REGISTE_LOGS = "/app/face_registe_logs"
+const FACE_REGISTE_PATH = "/hiar_face/registe_path"
+const FACE_REGISTE_LOGS = "/hiar_face/registe_logs"
+const FACE_SEARCH_RECORD = "/hiar_face/search_record"
 
 var logFilename = FACE_REGISTE_LOGS + "/" + time.Now().Format("2006-01-02") + ".txt"
+var searchRecordFilename = FACE_SEARCH_RECORD + "/" + time.Now().Format("2006-01-02") + ".txt"
 
 func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data) *FaceRecognizeApp {
 
@@ -60,6 +62,7 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 
 	os.MkdirAll(face_registe_path, 0755)
 	os.MkdirAll(FACE_REGISTE_LOGS, 0755)
+	os.MkdirAll(FACE_SEARCH_RECORD, 0755)
 
 	app.log.Infow("face_registe_path", face_registe_path, "face_models_path", face_models_path)
 
@@ -238,6 +241,12 @@ func (s *FaceRecognizeApp) UnRegisteAll(ctx context.Context, req *pb.EmptyReques
 	return &pb.EmptyReply{}, nil
 }
 
+type SearchRecord struct {
+	Time     string                     `json:"time"`
+	Filename string                     `json:"filename"`
+	Results  []*face_wrapper.FaceEntity `json:"results"`
+}
+
 func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultReply, err error) {
 	if s.registering.Load() {
 		return nil, ErrorFaceRegistering
@@ -248,16 +257,15 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 		return nil, ErrorRequestFrom
 	}
 
-	image, _, err := receiveFaceFile(request)
+	image, filename, err := receiveFaceFile(request)
 	if err != nil {
 		return nil, err
 	}
 
 	results := face_wrapper.Search(image)
 	if len(results) == 0 {
-		return nil, ErrorFaceSearchEmpty
+		err = ErrorFaceSearchEmpty
 	}
-
 	reply = &pb.SearchResultReply{}
 	for _, result := range results {
 		reply.Results = append(reply.Results, &pb.SearchResult{
@@ -266,7 +274,24 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 		})
 	}
 
-	return reply, nil
+	go func() {
+		basePath := FACE_SEARCH_RECORD + "/" + time.Now().Format("2006-01-02") + "/"
+		os.MkdirAll(basePath, 0755)
+
+		ioutil.WriteFile(basePath+filename, image.Data, 0644)
+
+		str, _ := json.Marshal(&SearchRecord{
+			Time:     util.GetLocTime(),
+			Filename: basePath + filename,
+			Results:  results,
+		})
+		if err := util.CreateOrOpenFile(searchRecordFilename, string(str)); err != nil {
+			s.log.Errorw("CreateOrOpenFile", err)
+		}
+
+	}()
+
+	return reply, err
 }
 
 func receiveFaceFile(request *http.Request) (image *face_wrapper.Image, filename string, err error) {

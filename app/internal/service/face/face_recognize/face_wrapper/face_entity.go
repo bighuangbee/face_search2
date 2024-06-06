@@ -23,10 +23,10 @@ type Personnal struct {
 }
 
 type FaceEntity struct {
-	RegFilename string //人脸注册文件名 aa/bb.jpg
-	Personnal   *Personnal
+	RegFilename string `json:"reg_filename"` //人脸注册文件名 aa/bb.jpg
+	//Personnal   *Personnal `json:"personnal"`
 
-	Match float32 //比对匹配值
+	Match float32 `json:"match"` //比对匹配值
 }
 
 const HIAR_FACE_FEATURE_LEN = 512

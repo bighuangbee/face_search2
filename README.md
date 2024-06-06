@@ -26,11 +26,11 @@ export GOROOT=/usr/local/go
 ```
 #构建dev
 docker build -t face_jq_dev -f Dockerfile.dev .
-docker run -d --runtime=nvidia --gpus all -p 22:22 -p 6001:6002 --privileged=true -v C:\face_registe_path:/app/face_registe_path --name face_jq_dev face_jq_dev
+docker run -d --runtime=nvidia --gpus all -p 22:22 -p 6001:6002 --privileged=true -v C:\hiar_face\registe_path:/hiar_face/registe_path --name face_jq_dev face_jq_dev
 
 构建app
 docker build -t face_jq_app .
-docker run -d --runtime=nvidia --gpus all -p 22:22 -p 6002:6002 --privileged=true -v C:\face_registe_path:/app/face_registe_path -v C:\face_registe_logs:/app/face_registe_logs --env face_models_path=/app/libs/models --name face_jq_app face_jq_app
+docker run -d --runtime=nvidia --gpus all -p 23:22 -p 6002:6002 --privileged=true -v C:\hiar_face\registe_path:/hiar_face/registe_path -v C:\hiar_face\logs:/hiar_face/registe_logs  -v C:\hiar_face\search_record:/hiar_face/search_record --env face_models_path=/app/libs/models --name face_jq_app face_jq_app
 
 ```
 
