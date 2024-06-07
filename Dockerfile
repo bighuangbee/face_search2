@@ -11,7 +11,6 @@ RUN go env -w GOPROXY=https://goproxy.cn,direct
 ENV GO111MODULE=on
 ENV GOPATH=/root/go
 ENV GOROOT=/usr/local/go
-RUN rm -f go1.20.1.linux-amd64.tar.gz
 
 ENV GODEBUG=cgocheck=0
 ENV CGO_ENABLED=1
@@ -23,9 +22,11 @@ RUN go env -w GOPROXY=https://goproxy.cn,direct && \
 RUN mkdir -p /root/.ssh && chmod 0700 /root/.ssh
 ADD id_rsa /root/.ssh/id_rsa
 ADD id_rsa.pub /root/.ssh/id_rsa.pub
+RUN #chmod 600 /root/.ssh/id_rsa && \
+#    chmod 600 /root/.ssh/id_rsa.pub && \
+#    ssh-keyscan -t rsa git.hiscene.net >> /root/.ssh/known_hosts
 RUN chmod 600 /root/.ssh/id_rsa && \
-    chmod 600 /root/.ssh/id_rsa.pub && \
-    ssh-keyscan -t rsa git.hiscene.net >> /root/.ssh/known_hosts
+    chmod 600 /root/.ssh/id_rsa.pub
 
 
 #git仓库打tag

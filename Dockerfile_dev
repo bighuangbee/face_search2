@@ -57,30 +57,29 @@ WORKDIR /root/face_search
 RUN apt-get install -y wget software-properties-common gcc
 
 #golang环境
-RUN wget https://dl.google.com/go/go1.20.1.linux-amd64.tar.gz --no-check-certificate
-RUN tar -xf go1.20.1.linux-amd64.tar.gz -C /usr/local/
+RUN wget https://dl.google.com/go/go1.22.4.linux-amd64.tar.gz --no-check-certificate
+RUN tar -xf go1.22.4.linux-amd64.tar.gz -C /usr/local/
 ENV PATH=$PATH:/usr/local/go/bin
 RUN go env -w GOBIN=/usr/local/go/bin
 RUN go env -w GOPROXY=https://goproxy.cn,direct
 ENV GO111MODULE=on
 ENV GOPATH=/root/go
 ENV GOROOT=/usr/local/go
-RUN rm -f go1.20.1.linux-amd64.tar.gz
+RUN rm -f go1.22.4.linux-amd64.tar.gz
 
 ENV GODEBUG=cgocheck=0
 ENV CGO_ENABLED=1
 
 WORKDIR /go/cache
-RUN go env -w GOPROXY=https://goproxy.cn,direct && \
-    go env -w GOPRIVATE=git.hiscene.net && \
-    git config --global url."git@git.hiscene.net:".insteadOf "https://git.hiscene.net/"
+
+RUN go env -w GOPROXY=https://goproxy.cn,direct
 
 RUN mkdir -p /root/.ssh && chmod 0700 /root/.ssh
 ADD id_rsa /root/.ssh/id_rsa
 ADD id_rsa.pub /root/.ssh/id_rsa.pub
+
 RUN chmod 600 /root/.ssh/id_rsa && \
-    chmod 600 /root/.ssh/id_rsa.pub && \
-    ssh-keyscan -t rsa git.hiscene.net >> /root/.ssh/known_hosts
+    chmod 600 /root/.ssh/id_rsa.pub
 
 #git仓库打tag
 RUN go env -w GOPROXY=https://goproxy.cn,direct

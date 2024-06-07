@@ -24,7 +24,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1EmptyReply"
+              "$ref": "#/definitions/v1RegisteByPathReply"
             }
           },
           "default": {
@@ -44,6 +44,29 @@
             }
           }
         ],
+        "tags": [
+          "FaceRecognize"
+        ]
+      }
+    },
+    "/face/registe/status": {
+      "get": {
+        "summary": "人脸注册-从默认目录读取注册图",
+        "operationId": "FaceRecognize_RegisteStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RegisteStatusReply"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
         "tags": [
           "FaceRecognize"
         ]
@@ -122,6 +145,31 @@
     },
     "v1EmptyRequest": {
       "type": "object"
+    },
+    "v1RegisteByPathReply": {
+      "type": "object",
+      "properties": {
+        "registedSuccNum": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "registedFailedNum": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "newFaceNum": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1RegisteStatusReply": {
+      "type": "object",
+      "properties": {
+        "registering": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }

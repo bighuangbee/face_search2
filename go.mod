@@ -1,11 +1,10 @@
 module github.com/bighuangbee/face_search2
 
-go 1.20
+go 1.22
 
 require (
 	github.com/bighuangbee/kratos-vue-admin v0.0.0-20240523144442-adb5103d249d
 	github.com/envoyproxy/protoc-gen-validate v1.0.4
-	github.com/go-kratos/kratos/contrib/registry/nacos/v2 v2.0.0-20240516020449-fbac5fa25e7a
 	github.com/go-kratos/kratos/v2 v2.7.3
 	github.com/google/wire v0.6.0
 	github.com/gorilla/handlers v1.5.2
@@ -19,7 +18,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.27.0
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/zap v1.27.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157
+	golang.org/x/text v0.16.0
+	google.golang.org/genproto/googleapis/api v0.0.0-20240604185151-ef581f913117
 	google.golang.org/grpc v1.64.0
 	google.golang.org/protobuf v1.34.1
 )
@@ -48,8 +48,7 @@ require (
 	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240521202816-d264139d666e // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
 	gopkg.in/ini.v1 v1.42.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

@@ -1,10 +1,8 @@
 package face
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	pb "github.com/bighuangbee/face_search2/api/biz/v1"
 	"github.com/bighuangbee/face_search2/app/internal/data"
 	"github.com/bighuangbee/face_search2/app/internal/service/face/face_recognize/face_wrapper"
@@ -13,11 +11,8 @@ import (
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/transport/http"
-	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -75,155 +70,38 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 		app.log.Warnw("【NewFaceRecognizeApp】UnRegisteAll ", err)
 	}
 
-	app.registeFaceOneByOne(true)
+	registedFace, _, newFace := facePreProcessing(app.log)
+	app.registeFaceOneByOne(registedFace, newFace, true)
 
 	return &app
 }
 
-func (s *FaceRecognizeApp) RegisteByPath(context.Context, *pb.EmptyRequest) (*pb.EmptyReply, error) {
+func (s *FaceRecognizeApp) RegisteByPath(context.Context, *pb.EmptyRequest) (*pb.RegisteByPathReply, error) {
 	if s.registering.Load() {
 		return nil, ErrorFaceRegistering
 	}
+
+	registedSuccFace, registedFailedFace, newFace := facePreProcessing(s.log)
+	s.log.Infow("已注册成功的人脸", len(registedSuccFace), "已注册失败的人脸", len(registedFailedFace), "新增待注册人脸", len(newFace))
 
 	go func() {
 		s.registering.Store(true)
 		defer s.registering.Store(false)
 		//s.registeFace()
-		s.registeFaceOneByOne(false)
+		s.registeFaceOneByOne(registedSuccFace, newFace, false)
 	}()
 
-	return &pb.EmptyReply{}, nil
+	return &pb.RegisteByPathReply{
+		RegistedSuccNum:   int32(len(registedSuccFace)),
+		RegistedFailedNum: int32(len(registedFailedFace)),
+		NewFaceNum:        int32(len(newFace)),
+	}, nil
 }
 
-/**
- * @Desc  逐个图片注册
- * @Param reset 是否跳过已注册的图片
- **/
-func (s *FaceRecognizeApp) registeFaceOneByOne(reset bool) {
-
-	t := time.Now()
-	s.log.Infow("【registeFaceOneByOne】begining", "")
-
-	files, err := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
-	if err != nil {
-		s.log.Errorw("【RegisteByPath】GetFilesWithExtensions", err)
-		return
-	}
-
-	//之前已注册的人脸
-	registedFaceMap := make(map[string]struct{})
-
-	file, err := os.Open(logFilename)
-	if err != nil {
-		s.log.Warnw("os.Open error", err, "logFilename", logFilename)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := face_wrapper.RegisteInfo{}
-		if err := json.Unmarshal(scanner.Bytes(), &line); err != nil {
-			s.log.Errorw("json.Unmarshal", err)
-		}
-		registedFaceMap[line.Filename] = struct{}{}
-	}
-
-	if err := scanner.Err(); err != nil {
-		s.log.Warnw("canner registe file error", err, "logFilename", logFilename)
-	}
-
-	//注册的图片数量
-	registeNum := 0
-	//注册成功的数量
-	registeSuccNum := 0
-	for index, filename := range files {
-		if _, ok := registedFaceMap[filename]; ok && !reset {
-			s.log.Infow("人脸已注册", strconv.Itoa(index+1)+" "+filename)
-			continue
-		}
-
-		imageFile, err := ioutil.ReadFile(filename)
-		if err != nil {
-			s.log.Infow("ReadFile error", filename)
-			continue
-		}
-		regError := face_wrapper.RegisteSingle(&face_wrapper.Image{
-			DataType: face_wrapper.GetImageType(filename),
-			Size:     len(imageFile),
-			Data:     imageFile,
-		}, filename)
-
-		result := face_wrapper.RegisteInfo{
-			Filename: filename,
-			Ok:       false,
-			Time:     util.GetLocTime(),
-		}
-
-		if regError == nil {
-			result.Ok = true
-			registeSuccNum++
-		}
-
-		str, _ := json.Marshal(&result)
-		if err := util.CreateOrOpenFile(logFilename, string(str)); err != nil {
-			s.log.Errorw("CreateOrOpenFile", err)
-		}
-		registeNum++
-
-		if regError == nil {
-			s.log.Infow("注册成功", strconv.Itoa(index+1)+" "+filename)
-		} else {
-			s.log.Infow("注册失败", strconv.Itoa(index+1)+" "+filename)
-		}
-	}
-
-	s.log.Infow("【registeFaceOneByOne】end", "success", "注册的图片数量", registeNum, "注册成功的数量", registeSuccNum, "耗时", time.Since(t))
-}
-
-func (s *FaceRecognizeApp) registeFace() {
-
-	t := time.Now()
-	s.log.Infow("【RegisteByPath】begining", "")
-
-	files, err := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
-	if err != nil {
-		s.log.Errorw("【RegisteByPath】GetFilesWithExtensions", err)
-		return
-	}
-
-	var regInfo []*face_wrapper.RegisteInfo
-	for _, filename := range files {
-		regInfo = append(regInfo, &face_wrapper.RegisteInfo{
-			Filename: filename,
-		})
-	}
-
-	err = face_wrapper.Registe(regInfo)
-	if err != nil {
-		s.log.Errorw("【RegisteByPath】failed", err)
-	} else {
-		s.log.Infow("【RegisteByPath】end", "success", "duration", time.Since(t))
-	}
-
-	for index, info := range regInfo {
-		result := face_wrapper.RegisteInfo{
-			Filename: info.Filename,
-			Ok:       info.Ok,
-			Time:     util.GetLocTime(),
-		}
-
-		str, _ := json.Marshal(&result)
-		if err := util.CreateOrOpenFile(logFilename, string(str)); err != nil {
-			s.log.Errorw("CreateOrOpenFile", err)
-		}
-
-		if result.Ok {
-			s.log.Infow("注册成功", strconv.Itoa(index+1)+" "+info.Filename)
-		} else {
-			s.log.Infow("注册失败", strconv.Itoa(index+1)+" "+info.Filename)
-		}
-	}
-
+func (s *FaceRecognizeApp) RegisteStatus(context.Context, *pb.EmptyRequest) (*pb.RegisteStatusReply, error) {
+	return &pb.RegisteStatusReply{
+		Registering: s.registering.Load(),
+	}, nil
 }
 
 func (s *FaceRecognizeApp) UnRegisteAll(ctx context.Context, req *pb.EmptyRequest) (*pb.EmptyReply, error) {
@@ -292,31 +170,4 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 	}()
 
 	return reply, err
-}
-
-func receiveFaceFile(request *http.Request) (image *face_wrapper.Image, filename string, err error) {
-	file, fileHeader, err := request.FormFile("file")
-	if err != nil {
-		fmt.Println("err", err)
-		return nil, "", ErrorRequestMissingFile
-	}
-	defer file.Close()
-
-	if !util.HasValidExtension(filepath.Ext(fileHeader.Filename), face_wrapper.PictureExt) {
-		return nil, "", ErrorImageTypeRequired
-	}
-
-	fileData, err := io.ReadAll(file)
-	if err != nil {
-		return nil, "", err
-	}
-
-	image = &face_wrapper.Image{
-		Data:     fileData,
-		Size:     len(fileData),
-		DataType: face_wrapper.GetImageType(fileHeader.Filename),
-	}
-
-	filename = fileHeader.Filename
-	return
 }

@@ -12,6 +12,28 @@ import (
 )
 
 // GetFilesWithExtensions 读取指定目录下的文件，并过滤出指定扩展名的文件
+func ReadFilesWithExtensions(dir string, extensions []string) ([]string, error) {
+	fileList := []string{}
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		info, err := file.Info()
+		if err != nil {
+			continue
+		}
+
+		if !info.IsDir() && HasValidExtension(file.Name(), extensions) {
+			fileList = append(fileList, file.Name())
+		}
+
+	}
+	return fileList, nil
+}
+
+// GetFilesWithExtensions 读取指定目录下的文件，并过滤出指定扩展名的文件
 func GetFilesWithExtensions(dir string, extensions []string) ([]string, error) {
 	var files []string
 
