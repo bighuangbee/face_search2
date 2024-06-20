@@ -71,7 +71,7 @@ func Registe(regInfo []*RegisteInfo) (err error) {
 
 func RegisteSingle(image *Image, filename string) (err error) {
 	if len(image.Data) == 0 {
-		return errors.New("空的照片数据")
+		return errors.New("空照片")
 	}
 	var cImage C.ImageData
 	cImage.data = (*C.uchar)((unsafe.Pointer)(&image.Data[0]))
@@ -80,7 +80,7 @@ func RegisteSingle(image *Image, filename string) (err error) {
 	cImage.height = C.int(image.Height)
 	cImage.data_type = C.enum_ImageDataType(image.DataType)
 
-	if ret := C.hiarAddingImage(&cImage, C.CString(filepath.Base(filename))); ret != OK {
+	if ret := C.hiarAddingImage(&cImage, C.CString(filename)); ret != OK {
 		return errors.New("注册失败" + strconv.Itoa(int(ret)))
 	}
 	return nil
