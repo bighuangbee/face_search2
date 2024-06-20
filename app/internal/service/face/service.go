@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -22,7 +23,26 @@ import (
  **/
 func facePreProcessing(log *log.Helper) (registedSuccFace []string, registedFailedFace []string, newFace []string) {
 
+	//对容器内注册文件重命名
 	files, err := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
+	if err != nil {
+		log.Errorw("【RegisteByPath】GetFilesWithExtensions", err)
+		return
+	}
+
+	renameFlag := "_"
+	fileflag := "_" + time.Now().Format("01021504") + renameFlag
+	for _, filename := range files {
+		if !strings.HasSuffix(filename, renameFlag+filepath.Ext(filename)) {
+			rename := filepath.Dir(filename) + "/" + util.GetFileName(filename) + fileflag + filepath.Ext(filename)
+			if err := os.Rename(filename, rename); err != nil {
+				log.Warnf("os.Rename", err)
+			}
+			//log.Infow("注册图重命名", "", "filename", filename, "rename", rename)
+		}
+	}
+
+	fileList, err := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
 	if err != nil {
 		log.Errorw("【RegisteByPath】GetFilesWithExtensions", err)
 		return
@@ -50,14 +70,16 @@ func facePreProcessing(log *log.Helper) (registedSuccFace []string, registedFail
 		log.Warnw("scanner registe file error", err, "logFilename", logFilename)
 	}
 
-	for index, filename := range files {
+	for index, filename := range fileList {
+		//log.Debugw("registedFaceMap[filename]", registedFaceMap[filename])
+		//log.Debugw("filename", filename)
 		if item, ok := registedFaceMap[filename]; ok {
-			log.Infow("人脸已注册", strconv.Itoa(index+1)+" "+filename, "注册成功:", item.Ok)
+			log.Infow("已注册人脸记录", strconv.Itoa(index+1)+" "+filename, "是否注册成功:", item.Ok)
 
 			if item.Ok {
 				registedSuccFace = append(registedSuccFace, filename)
 			} else {
-				registedFailedFace = append(registedSuccFace, filename)
+				registedFailedFace = append(registedFailedFace, filename)
 			}
 		} else {
 			newFace = append(newFace, filename)
@@ -74,7 +96,7 @@ func facePreProcessing(log *log.Helper) (registedSuccFace []string, registedFail
 func (s *FaceRecognizeApp) registeFaceOneByOne(registedFace []string, newFace []string, reset bool) {
 
 	t := time.Now()
-	s.log.Infow("【registeFaceOneByOne】begining", "")
+	s.log.Infow("【registeFaceOneByOne】人脸注册开始", "")
 
 	if reset {
 		newFace = append(newFace, registedFace...)
@@ -86,11 +108,13 @@ func (s *FaceRecognizeApp) registeFaceOneByOne(registedFace []string, newFace []
 	registeSuccNum := 0
 
 	for index, filename := range newFace {
+		t1 := time.Now()
 		imageFile, err := ioutil.ReadFile(filename)
 		if err != nil {
 			s.log.Infow("ReadFile error", filename)
 			continue
 		}
+
 		regError := face_wrapper.RegisteSingle(&face_wrapper.Image{
 			DataType: face_wrapper.GetImageType(filename),
 			Size:     len(imageFile),
@@ -114,13 +138,13 @@ func (s *FaceRecognizeApp) registeFaceOneByOne(registedFace []string, newFace []
 		}
 
 		if regError == nil {
-			s.log.Infow("注册成功", strconv.Itoa(index+1)+" "+filename)
+			s.log.Infow("注册成功", strconv.Itoa(index+1)+" "+filename, "耗时", time.Since(t1))
 		} else {
-			s.log.Infow("注册失败", strconv.Itoa(index+1)+" "+filename)
+			s.log.Infow("注册失败", strconv.Itoa(index+1)+" "+filename, "耗时", time.Since(t1))
 		}
 	}
 
-	s.log.Infow("【registeFaceOneByOne】end", "新增注册人脸", "数量", registeNum, "注册成功", registeSuccNum, "注册失败", registeNum-registeSuccNum, "耗时", time.Since(t))
+	s.log.Infow("【registeFaceOneByOne】人脸注册结束", "", "新增注册人脸数量", registeNum, "注册成功", registeSuccNum, "注册失败", registeNum-registeSuccNum, "耗时", time.Since(t))
 }
 
 func (s *FaceRecognizeApp) registeFace() {

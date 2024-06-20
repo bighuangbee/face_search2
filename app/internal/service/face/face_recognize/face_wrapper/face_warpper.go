@@ -40,8 +40,8 @@ type RegisteInfo struct {
 	Filename string `json:"filename"`
 }
 
-func Init(modelPath string, logFilename string) error {
-	ret := C.hiarClusterInit(0.86, 20, C.CString(modelPath), C.CString(logFilename))
+func Init(modelPath string, logFilename string, match float32) error {
+	ret := C.hiarClusterInit(C.float(match), 20, C.CString(modelPath), C.CString(logFilename))
 	if ret != 1 {
 		return errors.New("【Init】hiarClusterInit error, retCode:" + strconv.Itoa(int(ret)))
 	}
@@ -70,6 +70,9 @@ func Registe(regInfo []*RegisteInfo) (err error) {
 }
 
 func RegisteSingle(image *Image, filename string) (err error) {
+	if len(image.Data) == 0 {
+		return errors.New("空的照片数据")
+	}
 	var cImage C.ImageData
 	cImage.data = (*C.uchar)((unsafe.Pointer)(&image.Data[0]))
 	cImage.data_len = C.int(len(image.Data))

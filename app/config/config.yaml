@@ -27,3 +27,7 @@ microServices:
     timeout:  60
     endpoint:  "localhost:9001"
     isLocal:  true
+
+registeTimer: 0 #定时注册，单位分钟，0=不启用
+startUnRegiste: false #启动时注销以前的人脸
+match: 0.6

@@ -17,6 +17,9 @@ message Bootstrap {
   map<string, MicroService> microServices = 9;
   string name = 10;
   string version = 11;
+  int32 registeTimer = 12;
+  bool startUnRegiste = 13;
+  float match = 14;
 }
 
 enum Env

@@ -61,17 +61,39 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 
 	app.log.Infow("face_registe_path", face_registe_path, "face_models_path", face_models_path)
 
-	if err := face_wrapper.Init(face_models_path, "./hiarClusterLog.txt"); err != nil {
+	if err := face_wrapper.Init(face_models_path, "./hiarClusterLog.txt", bc.Match); err != nil {
 		app.log.Infow("【NewFaceRecognizeApp】face_wrapper init", err)
 		panic(err)
 	}
 
-	if err := face_wrapper.UnRegisteAll(); err != nil {
-		app.log.Warnw("【NewFaceRecognizeApp】UnRegisteAll ", err)
+	if bc.StartUnRegiste {
+		if err := face_wrapper.UnRegisteAll(); err != nil {
+			app.log.Warnw("【NewFaceRecognizeApp】UnRegisteAll ", err)
+		}
 	}
 
 	registedFace, _, newFace := facePreProcessing(app.log)
 	app.registeFaceOneByOne(registedFace, newFace, true)
+
+	if bc.RegisteTimer > 0 {
+		ticker := time.NewTicker(time.Minute * time.Duration(bc.RegisteTimer))
+		go func() {
+			defer ticker.Stop()
+			for {
+				<-ticker.C
+				if !app.registering.Load() {
+					app.registering.Store(true)
+					app.log.Infow("定时自动注册人脸", "")
+					registedFace, _, newFace := facePreProcessing(app.log)
+					app.registeFaceOneByOne(registedFace, newFace, true)
+					app.registering.Store(false)
+				} else {
+					app.log.Infow("定时自动注册人脸失败", "上次注册执行中")
+				}
+
+			}
+		}()
+	}
 
 	return &app
 }
@@ -82,7 +104,7 @@ func (s *FaceRecognizeApp) RegisteByPath(context.Context, *pb.EmptyRequest) (*pb
 	}
 
 	registedSuccFace, registedFailedFace, newFace := facePreProcessing(s.log)
-	s.log.Infow("已注册成功的人脸", len(registedSuccFace), "已注册失败的人脸", len(registedFailedFace), "新增待注册人脸", len(newFace))
+	s.log.Infow("本次新增人脸", len(newFace), "之前注册成功人脸", len(registedSuccFace), "之前注册失败的人脸", len(registedFailedFace))
 
 	go func() {
 		s.registering.Store(true)

@@ -22,10 +22,12 @@ export GOROOT=/usr/local/go
 
 ```
 
+docker stop face_jq_app && docker rm face_jq_app && docker rmi -f docker_face_app
+
 ### 构建
 ```
 #构建dev
-docker build -t face_jq_dev -f Dockerfile.dev .
+docker build -t face_jq_dev -f Dockerfile_dev .
 docker run -d --runtime=nvidia --gpus all -p 22:22 -p 6001:6002 --privileged=true -v C:\hiar_face\registe_path:/hiar_face/registe_path --name face_jq_dev face_jq_dev
 
 构建app
