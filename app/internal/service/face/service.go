@@ -193,6 +193,7 @@ func (s *FaceRecognizeApp) registeFace() {
 
 func receiveFaceFile(request *http.Request) (image *face_wrapper.Image, filename string, err error) {
 	file, fileHeader, err := request.FormFile("file")
+
 	if err != nil {
 		fmt.Println("err", err)
 		return nil, "", ErrorRequestMissingFile

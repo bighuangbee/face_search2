@@ -13,6 +13,7 @@ import (
 	"github.com/go-kratos/kratos/v2/transport/http"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -26,9 +27,10 @@ var ErrorFaceSDK = errors.New(400, "ErrorFaceSDK", "ErrorFaceSDK")
 var ErrorFaceSearchEmpty = errors.New(400, "ErrorFaceSearchEmpty", "ErrorFaceSearchEmpty")
 
 type FaceRecognizeApp struct {
-	log         *log.Helper
-	data        *data.Data
-	registering atomic.Bool
+	log          *log.Helper
+	data         *data.Data
+	registering  atomic.Bool
+	FileInfoRepo map[string]*FileInfo
 }
 
 const FACE_REGISTE_PATH = "/hiar_face/registe_path"
@@ -95,6 +97,7 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 		}()
 	}
 
+	app.FileInfoRepo = LoadFileInfo()
 	return &app
 }
 
@@ -163,15 +166,37 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 	}
 
 	results := face_wrapper.Search(image)
-	if len(results) == 0 {
-		err = ErrorFaceSearchEmpty
-	}
 	reply = &pb.SearchResultReply{}
 	for _, result := range results {
 		reply.Results = append(reply.Results, &pb.SearchResult{
 			Filename: result.RegFilename,
 			Match:    result.Match,
 		})
+	}
+
+	inputTimeStr := request.FormValue("inputTime")
+	timeRangeValue, _ := strconv.Atoi(request.FormValue("timeRange"))
+	timeRange := time.Minute * time.Duration(timeRangeValue)
+
+	s.log.Infow("Search form data", inputTimeStr, timeRangeValue)
+
+	//算法搜索不到结果时，按时间范围检索图片
+	if len(results) == 0 {
+
+		fileInforesults, err := GetRangeFile(s.FileInfoRepo, inputTimeStr, timeRange)
+		if err != nil {
+			s.log.Errorw("GetRangeFile", err)
+			return nil, ErrorRequestFrom
+		}
+		for _, result := range fileInforesults {
+			reply.Results = append(reply.Results, &pb.SearchResult{
+				Filename: result.Filename,
+			})
+		}
+	}
+
+	if len(reply.Results) == 0 {
+		err = ErrorFaceSearchEmpty
 	}
 
 	go func() {
