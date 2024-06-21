@@ -1,9 +1,9 @@
 
 ### 环境变量
 ```
-wget https://dl.google.com/go/go1.20.1.linux-amd64.tar.gz
-tar -xf go1.20.1.linux-amd64.tar.gz -C /usr/local/
-rm -f go1.20.1.linux-amd64.tar.gz
+wget https://dl.google.com/go/go1.22.4.linux-amd64.tar.gz
+tar -xf go1.22.4.linux-amd64.tar.gz -C /usr/local/
+rm -f go1.22.4.linux-amd64.tar.gz
 
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/face_search/libs/sdk/lib/

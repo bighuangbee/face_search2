@@ -37,12 +37,12 @@ func LoadFileInfo() map[string]*FileInfo {
 
 		//stat := fileInfo.Sys().(*syscall.Stat_t)
 
-		//fmt.Println("Ctimespec", filename, time.Unix(stat.Ctimespec.Sec, stat.Ctimespec.Nsec).String())
-		//fmt.Println("Birthtimespec", filename, time.Unix(stat.Birthtimespec.Sec, stat.Birthtimespec.Nsec).String())
+		fmt.Println("LoadFileInfo", filename, "Ctim:", time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec).String(), "Mtim:", time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).String(), "Atim:", time.Unix(stat.Atim.Sec, stat.Atim.Nsec).String())
+		//fmt.Println("Birthtimespec", filename, time.Unix(stat.Btim.Sec, stat.Btim.Nsec).String())
 
 		FileInfoRepo[filename] = &FileInfo{
 			Filename:  filename,
-			Birthtime: time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec).In(location),
+			Birthtime: time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).In(location),
 		}
 	}
 	return FileInfoRepo

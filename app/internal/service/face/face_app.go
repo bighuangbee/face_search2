@@ -114,6 +114,8 @@ func (s *FaceRecognizeApp) RegisteByPath(context.Context, *pb.EmptyRequest) (*pb
 		defer s.registering.Store(false)
 		//s.registeFace()
 		s.registeFaceOneByOne(registedSuccFace, newFace, false)
+
+		s.FileInfoRepo = LoadFileInfo()
 	}()
 
 	return &pb.RegisteByPathReply{
@@ -174,15 +176,14 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 		})
 	}
 
-	inputTimeStr := request.FormValue("inputTime")
+	inputTimeStr := request.FormValue("timeStr")
 	timeRangeValue, _ := strconv.Atoi(request.FormValue("timeRange"))
 	timeRange := time.Minute * time.Duration(timeRangeValue)
 
-	s.log.Infow("Search form data", inputTimeStr, timeRangeValue)
+	s.log.Infow("Search formdata", "", "inputTimeStr", inputTimeStr, "timeRangeValue", timeRangeValue)
 
 	//算法搜索不到结果时，按时间范围检索图片
-	if len(results) == 0 {
-
+	if len(results) == 0 && inputTimeStr != "" && timeRangeValue > 0 {
 		fileInforesults, err := GetRangeFile(s.FileInfoRepo, inputTimeStr, timeRange)
 		if err != nil {
 			s.log.Errorw("GetRangeFile", err)
@@ -193,6 +194,8 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 				Filename: result.Filename,
 			})
 		}
+
+		s.log.Infow("算法检索不到结果, 进行文件时间检索, 结果数量:", len(fileInforesults), "fileInforesults", fileInforesults)
 	}
 
 	if len(reply.Results) == 0 {
