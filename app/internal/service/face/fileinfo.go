@@ -27,7 +27,7 @@ func LoadFileInfo() map[string]*FileInfo {
 	}
 
 	var FileInfoRepo = make(map[string]*FileInfo, 0)
-	for _, filename := range fileList {
+	for index, filename := range fileList {
 
 		var stat unix.Stat_t
 		if err := unix.Stat(filename, &stat); err != nil {
@@ -37,7 +37,7 @@ func LoadFileInfo() map[string]*FileInfo {
 
 		//stat := fileInfo.Sys().(*syscall.Stat_t)
 
-		fmt.Println("LoadFileInfo", filename, "Ctim:", time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec).String(), "Mtim:", time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).String(), "Atim:", time.Unix(stat.Atim.Sec, stat.Atim.Nsec).String())
+		fmt.Println("LoadFileInfo", index+1, filename, "Ctim:", time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec).String(), "Mtim:", time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).String(), "Atim:", time.Unix(stat.Atim.Sec, stat.Atim.Nsec).String())
 		//fmt.Println("Birthtimespec", filename, time.Unix(stat.Btim.Sec, stat.Btim.Nsec).String())
 
 		FileInfoRepo[filename] = &FileInfo{

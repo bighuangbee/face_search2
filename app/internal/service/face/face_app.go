@@ -74,8 +74,8 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 		}
 	}
 
-	registedFace, _, newFace := facePreProcessing(app.log)
-	app.registeFaceOneByOne(registedFace, newFace, true)
+	//registedFace, _, newFace := facePreProcessing(app.log)
+	//app.registeFaceOneByOne(registedFace, newFace, true)
 
 	if bc.RegisteTimer > 0 {
 		ticker := time.NewTicker(time.Minute * time.Duration(bc.RegisteTimer))
