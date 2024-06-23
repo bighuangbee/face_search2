@@ -13,7 +13,6 @@ import (
 	"github.com/go-kratos/kratos/v2/transport/http"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -77,6 +76,7 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 	//registedFace, _, newFace := facePreProcessing(app.log)
 	//app.registeFaceOneByOne(registedFace, newFace, true)
 
+	//是否定期注册照片
 	if bc.RegisteTimer > 0 {
 		ticker := time.NewTicker(time.Minute * time.Duration(bc.RegisteTimer))
 		go func() {
@@ -147,9 +147,11 @@ func (s *FaceRecognizeApp) UnRegisteAll(ctx context.Context, req *pb.EmptyReques
 }
 
 type SearchRecord struct {
-	Time     string                     `json:"time"`
-	Filename string                     `json:"filename"`
-	Results  []*face_wrapper.FaceEntity `json:"results"`
+	Time      string                     `json:"time"`
+	Filename  string                     `json:"filename"`
+	StartTime string                     `json:"startTime"`
+	EndTime   string                     `json:"endTime"`
+	Results   []*face_wrapper.FaceEntity `json:"results"`
 }
 
 func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultReply, err error) {
@@ -176,15 +178,14 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 		})
 	}
 
-	inputTimeStr := request.FormValue("timeStr")
-	timeRangeValue, _ := strconv.Atoi(request.FormValue("timeRange"))
-	timeRange := time.Minute * time.Duration(timeRangeValue)
+	startTime := request.FormValue("startTime")
+	endTime := request.FormValue("endTime")
 
-	s.log.Infow("Search formdata", "", "inputTimeStr", inputTimeStr, "timeRangeValue", timeRangeValue)
+	s.log.Infow("Search formdata", "", "inputTimeStr", startTime, "endTime", endTime)
 
 	//算法搜索不到结果时，按时间范围检索图片
-	if len(results) == 0 && inputTimeStr != "" && timeRangeValue > 0 {
-		fileInforesults, err := GetRangeFile(s.FileInfoRepo, inputTimeStr, timeRange)
+	if len(results) == 0 && startTime != "" && endTime != "" {
+		fileInforesults, err := GetRangeFile(s.FileInfoRepo, startTime, endTime)
 		if err != nil {
 			s.log.Errorw("GetRangeFile", err)
 			return nil, ErrorRequestFrom
@@ -214,9 +215,56 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 			Results:  results,
 		})
 		if err := util.CreateOrOpenFile(searchRecordFilename, string(str)); err != nil {
-			s.log.Errorw("CreateOrOpenFile", err)
+			s.log.Errorw("Search CreateOrOpenFile", err)
 		}
 
+	}()
+
+	return reply, err
+}
+
+func (s *FaceRecognizeApp) FaceSearchByDatetime(ctx context.Context, req *pb.FaceSearchByDatetimeRequest) (reply *pb.SearchResultReply, err error) {
+
+	searchRecord := SearchRecord{
+		Time:      util.GetLocTime(),
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+	}
+
+	reply = &pb.SearchResultReply{}
+
+	//按时间范围检索照片
+	if req.StartTime != "" && req.EndTime != "" {
+		fileInforesults, err := GetRangeFile(s.FileInfoRepo, req.StartTime, req.EndTime)
+		if err != nil {
+			s.log.Errorw("GetRangeFile", err)
+			return nil, ErrorRequestFrom
+		}
+		for _, result := range fileInforesults {
+			reply.Results = append(reply.Results, &pb.SearchResult{
+				Filename: result.Filename,
+			})
+
+			searchRecord.Results = append(searchRecord.Results, &face_wrapper.FaceEntity{
+				RegFilename: result.Filename,
+			})
+		}
+
+		s.log.Infow("按照片的生成时间搜索, 结果数量:", len(fileInforesults), "fileInforesults", fileInforesults)
+	}
+
+	if len(reply.Results) == 0 {
+		err = ErrorFaceSearchEmpty
+	}
+
+	go func() {
+		basePath := FACE_SEARCH_RECORD + "/" + time.Now().Format("2006-01-02") + "/"
+		os.MkdirAll(basePath, 0755)
+
+		str, _ := json.Marshal(&searchRecord)
+		if err := util.CreateOrOpenFile(searchRecordFilename, string(str)); err != nil {
+			s.log.Errorw("FaceSearchByDatetime CreateOrOpenFile", err)
+		}
 	}()
 
 	return reply, err

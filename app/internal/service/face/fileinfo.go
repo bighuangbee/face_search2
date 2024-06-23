@@ -1,6 +1,7 @@
 package face
 
 import (
+	"errors"
 	"fmt"
 	"github.com/bighuangbee/face_search2/app/internal/service/face/face_recognize/face_wrapper"
 	"github.com/bighuangbee/face_search2/pkg/util"
@@ -37,7 +38,10 @@ func LoadFileInfo() map[string]*FileInfo {
 
 		//stat := fileInfo.Sys().(*syscall.Stat_t)
 
+		//if index == 0{
 		fmt.Println("LoadFileInfo", index+1, filename, "Ctim:", time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec).String(), "Mtim:", time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).String(), "Atim:", time.Unix(stat.Atim.Sec, stat.Atim.Nsec).String())
+		//}
+
 		//fmt.Println("Birthtimespec", filename, time.Unix(stat.Btim.Sec, stat.Btim.Nsec).String())
 
 		FileInfoRepo[filename] = &FileInfo{
@@ -48,15 +52,24 @@ func LoadFileInfo() map[string]*FileInfo {
 	return FileInfoRepo
 }
 
-func GetRangeFile(fileInfoList map[string]*FileInfo, inputTimeStr string, timeRange time.Duration) (results []*FileInfo, err error) {
-	inputTime, err := time.ParseInLocation(timeFormat, inputTimeStr, location)
+// GetRangeFile 查找在指定时间范围内的文件
+func GetRangeFile(fileInfoList map[string]*FileInfo, startTimeStr string, endTimeStr string) (results []*FileInfo, err error) {
+
+	// 解析开始时间和结束时间字符串
+	startTime, err := time.ParseInLocation(timeFormat, startTimeStr, location)
 	if err != nil {
 		return nil, err
 	}
 
-	// 计算时间范围的开始和结束时间
-	startTime := inputTime.Add(-timeRange)
-	endTime := inputTime.Add(timeRange)
+	endTime, err := time.ParseInLocation(timeFormat, endTimeStr, location)
+	if err != nil {
+		return nil, err
+	}
+
+	// 确保开始时间在结束时间之前
+	if startTime.After(endTime) {
+		return nil, errors.New("startTime should be before endTime")
+	}
 
 	// 查找在指定时间范围内的文件
 	for _, info := range fileInfoList {

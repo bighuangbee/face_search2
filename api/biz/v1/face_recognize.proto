@@ -18,10 +18,18 @@ service FaceRecognize {
     };
   };
 
-  //人脸注册-从默认目录读取注册图
+  //人脸注册-获取状态
   rpc RegisteStatus (EmptyRequest) returns (RegisteStatusReply){
     option (google.api.http) = {
       get: "/face/registe/status"
+    };
+  };
+
+  //人脸搜索-按时间日期范围
+  rpc FaceSearchByDatetime (FaceSearchByDatetimeRequest) returns (SearchResultReply){
+    option (google.api.http) = {
+      post: "/face/search/datetime"
+      body: "*"
     };
   };
 
@@ -29,7 +37,7 @@ service FaceRecognize {
   rpc UnRegisteAll (EmptyRequest) returns (EmptyReply) {
     option (google.api.http) = {
       post: "/face/unregiste/all"
-      body:"*"
+      body: "*"
     };
   };
 
@@ -39,6 +47,11 @@ service FaceRecognize {
 message  EmptyReply{
 }
 message  EmptyRequest{
+}
+
+message  FaceSearchByDatetimeRequest{
+  string startTime = 1;
+  string endTime = 2;
 }
 
 message RegisteStatusReply{
