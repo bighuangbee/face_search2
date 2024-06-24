@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"flag"
+	"fmt"
 	"github.com/bighuangbee/face_search2/pkg/conf"
 	logger2 "github.com/bighuangbee/face_search2/pkg/logger"
 	"github.com/go-kratos/kratos/v2"
 	"go.uber.org/zap/zapcore"
 	"os"
+	"os/exec"
+	"time"
 
 	"github.com/go-kratos/kratos/v2/config"
 	"github.com/go-kratos/kratos/v2/config/file"
@@ -82,14 +86,43 @@ func main() {
 		//"span.id", tracing.SpanID(),
 	)
 
+	//服务模式：搜索
+	bc.Face.FaceMode = conf.FaceMode_search
+
+	//todo 判断显存大小
+	go registeRun()
+
 	app, cleanup, err := wireApp(&bc, logger)
 	if err != nil {
 		panic(err)
 	}
 	defer cleanup()
 
-	// start and wait for stop signal
 	if err := app.Run(); err != nil {
 		panic(err)
+	}
+}
+
+func registeRun() {
+
+	//等待主进程启动
+	time.Sleep(15 * time.Second)
+
+	//cmd := exec.Command("go", "run", "../registe/main.go")
+	cmd := exec.Command("../registe/registeBin")
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+
+	fmt.Printf("Output: %s\n", out.String())
+	if stderr.Len() > 0 {
+		fmt.Printf("Error: %s\n", stderr.String())
 	}
 }

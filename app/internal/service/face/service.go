@@ -72,7 +72,7 @@ func facePreProcessing(log *log.Helper) (registedSuccFace []string, registedFail
 
 	for index, filename := range fileList {
 		if item, ok := registedFaceMap[filename]; ok {
-			log.Infow("已注册人脸记录", strconv.Itoa(index+1)+" "+filename, "是否注册成功:", item.Ok)
+			fmt.Println("已注册人脸记录", strconv.Itoa(index+1)+" "+filename, "是否注册成功:", item.Ok)
 
 			if item.Ok {
 				registedSuccFace = append(registedSuccFace, filename)

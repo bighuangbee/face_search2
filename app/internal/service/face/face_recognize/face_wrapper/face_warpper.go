@@ -40,8 +40,8 @@ type RegisteInfo struct {
 	Filename string `json:"filename"`
 }
 
-func Init(modelPath string, logFilename string, match float32) error {
-	ret := C.hiarClusterInit(C.float(match), 20, C.CString(modelPath), C.CString(logFilename), C.CString("./"))
+func Init(modelPath string, match float32, svcPath string) error {
+	ret := C.hiarClusterInit(C.float(match), 20, C.CString(modelPath), C.CString(svcPath+"/hiarClusterLog.txt"), C.CString(svcPath))
 	if ret != 1 {
 		return errors.New("【Init】hiarClusterInit error, retCode:" + strconv.Itoa(int(ret)))
 	}

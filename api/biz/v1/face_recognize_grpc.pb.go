@@ -23,6 +23,7 @@ const (
 	FaceRecognize_RegisteStatus_FullMethodName        = "/api.biz.v1.FaceRecognize/RegisteStatus"
 	FaceRecognize_FaceSearchByDatetime_FullMethodName = "/api.biz.v1.FaceRecognize/FaceSearchByDatetime"
 	FaceRecognize_UnRegisteAll_FullMethodName         = "/api.biz.v1.FaceRecognize/UnRegisteAll"
+	FaceRecognize_FaceDbReload_FullMethodName         = "/api.biz.v1.FaceRecognize/FaceDbReload"
 )
 
 // FaceRecognizeClient is the client API for FaceRecognize service.
@@ -37,6 +38,7 @@ type FaceRecognizeClient interface {
 	FaceSearchByDatetime(ctx context.Context, in *FaceSearchByDatetimeRequest, opts ...grpc.CallOption) (*SearchResultReply, error)
 	// 人脸注销-所有人脸
 	UnRegisteAll(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*EmptyReply, error)
+	FaceDbReload(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*EmptyReply, error)
 }
 
 type faceRecognizeClient struct {
@@ -87,6 +89,16 @@ func (c *faceRecognizeClient) UnRegisteAll(ctx context.Context, in *EmptyRequest
 	return out, nil
 }
 
+func (c *faceRecognizeClient) FaceDbReload(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*EmptyReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EmptyReply)
+	err := c.cc.Invoke(ctx, FaceRecognize_FaceDbReload_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FaceRecognizeServer is the server API for FaceRecognize service.
 // All implementations must embed UnimplementedFaceRecognizeServer
 // for forward compatibility
@@ -99,6 +111,7 @@ type FaceRecognizeServer interface {
 	FaceSearchByDatetime(context.Context, *FaceSearchByDatetimeRequest) (*SearchResultReply, error)
 	// 人脸注销-所有人脸
 	UnRegisteAll(context.Context, *EmptyRequest) (*EmptyReply, error)
+	FaceDbReload(context.Context, *EmptyRequest) (*EmptyReply, error)
 	mustEmbedUnimplementedFaceRecognizeServer()
 }
 
@@ -117,6 +130,9 @@ func (UnimplementedFaceRecognizeServer) FaceSearchByDatetime(context.Context, *F
 }
 func (UnimplementedFaceRecognizeServer) UnRegisteAll(context.Context, *EmptyRequest) (*EmptyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnRegisteAll not implemented")
+}
+func (UnimplementedFaceRecognizeServer) FaceDbReload(context.Context, *EmptyRequest) (*EmptyReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FaceDbReload not implemented")
 }
 func (UnimplementedFaceRecognizeServer) mustEmbedUnimplementedFaceRecognizeServer() {}
 
@@ -203,6 +219,24 @@ func _FaceRecognize_UnRegisteAll_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FaceRecognize_FaceDbReload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EmptyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FaceRecognizeServer).FaceDbReload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FaceRecognize_FaceDbReload_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FaceRecognizeServer).FaceDbReload(ctx, req.(*EmptyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FaceRecognize_ServiceDesc is the grpc.ServiceDesc for FaceRecognize service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -225,6 +259,10 @@ var FaceRecognize_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnRegisteAll",
 			Handler:    _FaceRecognize_UnRegisteAll_Handler,
+		},
+		{
+			MethodName: "FaceDbReload",
+			Handler:    _FaceRecognize_FaceDbReload_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

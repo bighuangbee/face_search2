@@ -17,10 +17,7 @@ message Bootstrap {
   map<string, MicroService> microServices = 9;
   string name = 10;
   string version = 11;
-  int32 registeTimer = 12;
-  bool startUnRegiste = 13;
-  float match = 14;
-  int32 matchTimeRange = 15;
+  Face face = 12;
 }
 
 enum Env
@@ -33,6 +30,10 @@ enum Env
 message Server {
   message HTTP {
     string network = 1;
+    string addr = 2;
+    google.protobuf.Duration timeout = 3;
+  }
+  message HttpRegiste {
     string addr = 2;
     google.protobuf.Duration timeout = 3;
   }
@@ -131,4 +132,18 @@ message Discovery {
   uint32 Port = 2;
   uint32 timeout = 3;
   bool enable = 4;
+}
+
+enum FaceMode {
+  registe = 0;
+  search = 1;
+}
+
+message Face{
+  int32 registeTimer = 1;
+  float match = 2;
+  int32 matchTimeRange = 3;
+  string RegisteSvcPath = 4;
+  string SearchSvcPath = 5;
+  FaceMode FaceMode = 6;
 }

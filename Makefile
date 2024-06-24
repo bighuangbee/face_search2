@@ -66,6 +66,7 @@ test:
 
 .PHONY: run
 run:
+	cd app/cmd/registe/ && go build -o registeBin *.go
 	cd app/cmd/server/ && go run .
 
 .PHONY: docker

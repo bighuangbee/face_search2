@@ -41,7 +41,12 @@ service FaceRecognize {
     };
   };
 
-
+  rpc FaceDbReload (EmptyRequest) returns (EmptyReply) {
+    option (google.api.http) = {
+      post: "/face/reload"
+      body: "*"
+    };
+  };
 }
 
 message  EmptyReply{

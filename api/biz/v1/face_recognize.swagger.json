@@ -72,6 +72,38 @@
         ]
       }
     },
+    "/face/reload": {
+      "post": {
+        "operationId": "FaceRecognize_FaceDbReload",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1EmptyReply"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1EmptyRequest"
+            }
+          }
+        ],
+        "tags": [
+          "FaceRecognize"
+        ]
+      }
+    },
     "/face/search/datetime": {
       "post": {
         "summary": "人脸搜索-按时间日期范围",

@@ -65,23 +65,18 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 
 	app.log.Infow("face_registe_path", face_registe_path, "face_models_path", face_models_path)
 
-	if err := face_wrapper.Init(face_models_path, "./hiarClusterLog.txt", bc.Match); err != nil {
+	svcPath := bc.Face.SearchSvcPath
+	if bc.Face.FaceMode == conf.FaceMode_registe {
+		svcPath = bc.Face.RegisteSvcPath
+	}
+	if err := face_wrapper.Init(face_models_path, bc.Face.GetMatch(), svcPath); err != nil {
 		app.log.Infow("【NewFaceRecognizeApp】face_wrapper init", err)
 		panic(err)
 	}
 
-	if bc.StartUnRegiste {
-		if err := face_wrapper.UnRegisteAll(); err != nil {
-			app.log.Warnw("【NewFaceRecognizeApp】UnRegisteAll ", err)
-		}
-	}
-
-	//registedFace, _, newFace := facePreProcessing(app.log)
-	//app.registeFaceOneByOne(registedFace, newFace, true)
-
 	//是否定期注册照片
-	if bc.RegisteTimer > 0 {
-		ticker := time.NewTicker(time.Minute * time.Duration(bc.RegisteTimer))
+	if bc.Face.GetRegisteTimer() > 0 {
+		ticker := time.NewTicker(time.Minute * time.Duration(bc.Face.GetRegisteTimer()))
 		go func() {
 			defer ticker.Stop()
 			for {
@@ -177,15 +172,15 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 
 	startTime := time.Time{}
 	endTime := time.Time{}
-	if len(results) > 0 && s.bc.MatchTimeRange > 0 {
+	if len(results) > 0 && s.bc.Face.GetMatchTimeRange() > 0 {
 		t, _ := GetBirthtime(results[0].RegFilename)
-		startTime = t.Add(time.Duration(-s.bc.MatchTimeRange) * time.Minute)
-		endTime = t.Add(time.Duration(s.bc.MatchTimeRange) * time.Minute)
+		startTime = t.Add(time.Duration(-s.bc.Face.GetMatchTimeRange()) * time.Minute)
+		endTime = t.Add(time.Duration(s.bc.Face.GetMatchTimeRange()) * time.Minute)
 
 		fmt.Println("GetBirthtime", t.String(), "startTime", startTime.String(), "endTime", endTime.String())
 	}
 	for _, result := range results {
-		if s.bc.MatchTimeRange > 0 {
+		if s.bc.Face.GetMatchTimeRange() > 0 {
 			t, _ := GetBirthtime(result.RegFilename)
 			if !(t.After(startTime) && t.Before(endTime)) {
 				fmt.Printf(" 排除result.RegFilename", result.RegFilename)
@@ -290,4 +285,9 @@ func (s *FaceRecognizeApp) FaceSearchByDatetime(ctx context.Context, req *pb.Fac
 	}()
 
 	return reply, err
+}
+
+func (s *FaceRecognizeApp) FaceDbReload(ctx context.Context, req *pb.EmptyRequest) (reply *pb.EmptyReply, err error) {
+	s.log.Infow("FaceDbReload  123")
+	return nil, nil
 }

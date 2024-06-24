@@ -19,12 +19,14 @@ var _ = binding.EncodeURL
 
 const _ = http.SupportPackageIsVersion1
 
+const OperationFaceRecognizeFaceDbReload = "/api.biz.v1.FaceRecognize/FaceDbReload"
 const OperationFaceRecognizeFaceSearchByDatetime = "/api.biz.v1.FaceRecognize/FaceSearchByDatetime"
 const OperationFaceRecognizeRegisteByPath = "/api.biz.v1.FaceRecognize/RegisteByPath"
 const OperationFaceRecognizeRegisteStatus = "/api.biz.v1.FaceRecognize/RegisteStatus"
 const OperationFaceRecognizeUnRegisteAll = "/api.biz.v1.FaceRecognize/UnRegisteAll"
 
 type FaceRecognizeHTTPServer interface {
+	FaceDbReload(context.Context, *EmptyRequest) (*EmptyReply, error)
 	// FaceSearchByDatetime人脸搜索-按时间日期范围
 	FaceSearchByDatetime(context.Context, *FaceSearchByDatetimeRequest) (*SearchResultReply, error)
 	// RegisteByPath人脸注册-从默认目录读取注册图
@@ -41,6 +43,7 @@ func RegisterFaceRecognizeHTTPServer(s *http.Server, srv FaceRecognizeHTTPServer
 	r.GET("/face/registe/status", _FaceRecognize_RegisteStatus0_HTTP_Handler(srv))
 	r.POST("/face/search/datetime", _FaceRecognize_FaceSearchByDatetime0_HTTP_Handler(srv))
 	r.POST("/face/unregiste/all", _FaceRecognize_UnRegisteAll0_HTTP_Handler(srv))
+	r.POST("/face/reload", _FaceRecognize_FaceDbReload0_HTTP_Handler(srv))
 }
 
 func _FaceRecognize_RegisteByPath0_HTTP_Handler(srv FaceRecognizeHTTPServer) func(ctx http.Context) error {
@@ -128,7 +131,30 @@ func _FaceRecognize_UnRegisteAll0_HTTP_Handler(srv FaceRecognizeHTTPServer) func
 	}
 }
 
+func _FaceRecognize_FaceDbReload0_HTTP_Handler(srv FaceRecognizeHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in EmptyRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationFaceRecognizeFaceDbReload)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.FaceDbReload(ctx, req.(*EmptyRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*EmptyReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 type FaceRecognizeHTTPClient interface {
+	FaceDbReload(ctx context.Context, req *EmptyRequest, opts ...http.CallOption) (rsp *EmptyReply, err error)
 	FaceSearchByDatetime(ctx context.Context, req *FaceSearchByDatetimeRequest, opts ...http.CallOption) (rsp *SearchResultReply, err error)
 	RegisteByPath(ctx context.Context, req *EmptyRequest, opts ...http.CallOption) (rsp *RegisteByPathReply, err error)
 	RegisteStatus(ctx context.Context, req *EmptyRequest, opts ...http.CallOption) (rsp *RegisteStatusReply, err error)
@@ -141,6 +167,19 @@ type FaceRecognizeHTTPClientImpl struct {
 
 func NewFaceRecognizeHTTPClient(client *http.Client) FaceRecognizeHTTPClient {
 	return &FaceRecognizeHTTPClientImpl{client}
+}
+
+func (c *FaceRecognizeHTTPClientImpl) FaceDbReload(ctx context.Context, in *EmptyRequest, opts ...http.CallOption) (*EmptyReply, error) {
+	var out EmptyReply
+	pattern := "/face/reload"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationFaceRecognizeFaceDbReload))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 func (c *FaceRecognizeHTTPClientImpl) FaceSearchByDatetime(ctx context.Context, in *FaceSearchByDatetimeRequest, opts ...http.CallOption) (*SearchResultReply, error) {
