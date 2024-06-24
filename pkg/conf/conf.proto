@@ -20,6 +20,7 @@ message Bootstrap {
   int32 registeTimer = 12;
   bool startUnRegiste = 13;
   float match = 14;
+  int32 matchTimeRange = 15;
 }
 
 enum Env

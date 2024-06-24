@@ -42,8 +42,7 @@ extern "C" {
         @param topk
         @param model_path
         */
-        int hiarClusterInit(const float conf_thresh, const int top_k, const char* model_path, const char* logger_path);
-
+        int hiarClusterInit(const float conf_thresh, const int top_k, const char* model_path, const char* logger_path, const char* db_path);
         /**
         adding images
         @param input_list      [input] list of image filename which will be registed.fg.["D:/hiar/gallery/1.jpg", "D:/hiar/gallery/2.jpg"]

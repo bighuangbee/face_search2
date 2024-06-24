@@ -3,6 +3,7 @@ package face
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	pb "github.com/bighuangbee/face_search2/api/biz/v1"
 	"github.com/bighuangbee/face_search2/app/internal/data"
 	"github.com/bighuangbee/face_search2/app/internal/service/face/face_recognize/face_wrapper"
@@ -30,6 +31,7 @@ type FaceRecognizeApp struct {
 	data         *data.Data
 	registering  atomic.Bool
 	FileInfoRepo map[string]*FileInfo
+	bc           *conf.Bootstrap
 }
 
 const FACE_REGISTE_PATH = "/hiar_face/registe_path"
@@ -44,6 +46,7 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 	app := FaceRecognizeApp{
 		log:  log.NewHelper(log.With(logger, "module", "service/FaceRecognizeApp")),
 		data: data,
+		bc:   bc,
 	}
 
 	face_registe_path := os.Getenv("face_registe_path")
@@ -171,33 +174,52 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 
 	results := face_wrapper.Search(image)
 	reply = &pb.SearchResultReply{}
+
+	startTime := time.Time{}
+	endTime := time.Time{}
+	if len(results) > 0 && s.bc.MatchTimeRange > 0 {
+		t, _ := GetBirthtime(results[0].RegFilename)
+		startTime = t.Add(time.Duration(-s.bc.MatchTimeRange) * time.Minute)
+		endTime = t.Add(time.Duration(s.bc.MatchTimeRange) * time.Minute)
+
+		fmt.Println("GetBirthtime", t.String(), "startTime", startTime.String(), "endTime", endTime.String())
+	}
 	for _, result := range results {
+		if s.bc.MatchTimeRange > 0 {
+			t, _ := GetBirthtime(result.RegFilename)
+			if !(t.After(startTime) && t.Before(endTime)) {
+				fmt.Printf(" 排除result.RegFilename", result.RegFilename)
+				continue
+			}
+		}
+
 		reply.Results = append(reply.Results, &pb.SearchResult{
 			Filename: result.RegFilename,
 			Match:    result.Match,
 		})
+
 	}
 
-	startTime := request.FormValue("startTime")
-	endTime := request.FormValue("endTime")
+	//startTime := request.FormValue("startTime")
+	//endTime := request.FormValue("endTime")
 
-	s.log.Infow("Search formdata", "", "inputTimeStr", startTime, "endTime", endTime)
+	//s.log.Infow("Search formdata", "", "inputTimeStr", startTime, "endTime", endTime)
 
-	//算法搜索不到结果时，按时间范围检索图片
-	if len(results) == 0 && startTime != "" && endTime != "" {
-		fileInforesults, err := GetRangeFile(s.FileInfoRepo, startTime, endTime)
-		if err != nil {
-			s.log.Errorw("GetRangeFile", err)
-			return nil, ErrorRequestFrom
-		}
-		for _, result := range fileInforesults {
-			reply.Results = append(reply.Results, &pb.SearchResult{
-				Filename: result.Filename,
-			})
-		}
-
-		s.log.Infow("算法检索不到结果, 进行文件时间检索, 结果数量:", len(fileInforesults), "fileInforesults", fileInforesults)
-	}
+	////算法搜索不到结果时，按时间范围检索图片
+	//if len(results) == 0 && startTime != "" && endTime != "" {
+	//	fileInforesults, err := GetRangeFile(s.FileInfoRepo, startTime, endTime)
+	//	if err != nil {
+	//		s.log.Errorw("GetRangeFile", err)
+	//		return nil, ErrorRequestFrom
+	//	}
+	//	for _, result := range fileInforesults {
+	//		reply.Results = append(reply.Results, &pb.SearchResult{
+	//			Filename: result.Filename,
+	//		})
+	//	}
+	//
+	//	s.log.Infow("算法检索不到结果, 进行文件时间检索, 结果数量:", len(fileInforesults), "fileInforesults", fileInforesults)
+	//}
 
 	if len(reply.Results) == 0 {
 		err = ErrorFaceSearchEmpty

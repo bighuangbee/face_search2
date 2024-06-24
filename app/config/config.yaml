@@ -10,11 +10,6 @@ server:
 logger:
   path: ./logs
 
-carPlayer:
-  playDuration: 303 #游戏时长 秒
-  carNotActiveTimeout: 30 #小车标记为未持续注册状态的超时时间
-  carOfflineTimeout: 60 #小车标记为下线状态的超时时间
-
 discovery:
   ipAddr: 192.168.18.66
   port: 8848
@@ -30,4 +25,5 @@ microServices:
 
 registeTimer: 0 #定时注册，单位分钟，0=不启用
 startUnRegiste: false #启动时注销以前的人脸
-match: 0.6
+match: 0.85
+matchTimeRange: 0 #只保留与算法匹配度最高的照片拍摄时间不超过matchTimeRange分钟， 0=不限制时间

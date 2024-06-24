@@ -2,11 +2,11 @@ package face
 
 import (
 	"errors"
-	"fmt"
 	"github.com/bighuangbee/face_search2/app/internal/service/face/face_recognize/face_wrapper"
 	"github.com/bighuangbee/face_search2/pkg/util"
 	"github.com/go-kratos/kratos/v2/log"
-	"golang.org/x/sys/unix"
+	"github.com/rwcarlsen/goexif/exif"
+	"os"
 	"time"
 )
 
@@ -28,28 +28,36 @@ func LoadFileInfo() map[string]*FileInfo {
 	}
 
 	var FileInfoRepo = make(map[string]*FileInfo, 0)
-	for index, filename := range fileList {
-
-		var stat unix.Stat_t
-		if err := unix.Stat(filename, &stat); err != nil {
-			fmt.Printf("获取文件系统信息时出错: %v\n", err)
-			continue
-		}
-
-		//stat := fileInfo.Sys().(*syscall.Stat_t)
-
-		//if index == 0{
-		fmt.Println("LoadFileInfo", index+1, filename, "Ctim:", time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec).String(), "Mtim:", time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).String(), "Atim:", time.Unix(stat.Atim.Sec, stat.Atim.Nsec).String())
-		//}
-
-		//fmt.Println("Birthtimespec", filename, time.Unix(stat.Btim.Sec, stat.Btim.Nsec).String())
-
+	for _, filename := range fileList {
+		t, _ := GetBirthtime(filename)
 		FileInfoRepo[filename] = &FileInfo{
 			Filename:  filename,
-			Birthtime: time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).In(location),
+			Birthtime: t,
 		}
 	}
 	return FileInfoRepo
+}
+
+func GetBirthtime(filename string) (time.Time, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatalf("Error opening file: %v", err)
+	}
+	defer file.Close()
+
+	x, err := exif.Decode(file)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return x.DateTime()
+
+	////unix获取不到Btim
+	//var stat unix.Stat_t
+	//if err := unix.Stat(filename, &stat); err != nil {
+	//	return time.Time{}, err
+	//}
+	//
+	//return time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).In(location), nil
 }
 
 // GetRangeFile 查找在指定时间范围内的文件
