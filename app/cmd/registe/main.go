@@ -1,36 +1,38 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	v1 "github.com/bighuangbee/face_search2/api/biz/v1"
 	"github.com/bighuangbee/face_search2/app/internal/service/face"
+	"github.com/bighuangbee/face_search2/app/internal/service/face/face_recognize/face_wrapper"
 	"github.com/bighuangbee/face_search2/pkg/conf"
 	logger2 "github.com/bighuangbee/face_search2/pkg/logger"
+	"github.com/bighuangbee/face_search2/pkg/util"
 	"github.com/gin-gonic/gin"
 	"github.com/go-kratos/kratos/v2/config"
 	"github.com/go-kratos/kratos/v2/config/file"
 	"github.com/go-kratos/kratos/v2/log"
 	"go.uber.org/zap/zapcore"
 	"net"
-	"net/http"
+	"os"
+	"sync"
 	"time"
 )
 
 var (
-	flagconf string
-	logger   log.Logger
-	faceApp  *face.FaceRecognizeApp
-	bc       conf.Bootstrap
+	flagconf  string
+	logger    log.Logger
+	bc        conf.Bootstrap
+	regSerice *face.RegisteService
 )
 
-var regieteTime = time.Minute * 3
+var regieteTime time.Duration
+
+const FACE_REGISTE_FAILED = "/hiar_face/registe_failed"
 
 func init() {
 	flag.StringVar(&flagconf, "conf", "../../config", "config path, eg: -conf config.yaml")
+	os.MkdirAll(FACE_REGISTE_FAILED, 0755)
 }
 
 func main() {
@@ -61,20 +63,39 @@ func main() {
 	}))
 
 	bc.Face.FaceMode = conf.FaceMode_registe
+	if bc.Face.RegisteTimer <= 0 {
+		bc.Face.RegisteTimer = 1
+	}
+	regieteTime = time.Minute * time.Duration(bc.Face.RegisteTimer)
 
-	faceApp = face.NewFaceRecognizeApp(logger, &bc, nil)
-
+	//算法初始化
+	face.NewFaceRecognizeApp(logger, &bc, nil)
+	//定时检查新文件，放入注册队列
 	go regieteHandle()
+
+	//处理队列，执行注册
+	regSerice = face.NewRegisteService(logger)
+	go regSerice.Run()
 
 	router := gin.Default()
 	gin.SetMode(gin.ReleaseMode)
+	router.POST("/unregiste", func(c *gin.Context) {
+		logger.Log(log.LevelInfo, "【注册服务】UnRegisteAll", "注销照片")
+		err := face_wrapper.UnRegisteAll()
+		if err != nil {
+			logger.Log(log.LevelError, "UnRegisteAll", err)
+		}
 
-	router.GET("/unregiste", func(c *gin.Context) {
-		//todo 删除db 重新注册
+		//os.Remove(registeLogFile)
+
+		regSerice.Repo.Range(func(key, value interface{}) bool {
+			regSerice.Repo.Delete(key)
+			return true
+		})
 	})
 
-	router.GET("/registe", func(c *gin.Context) {
-		registe()
+	router.POST("/registe", func(c *gin.Context) {
+		checkFileAndPush()
 	})
 
 	logger.Log(log.LevelInfo, "照片注册服务启动")
@@ -82,45 +103,34 @@ func main() {
 	router.Run(":" + fmt.Sprintf("%d", 6666))
 }
 
-func registe() {
-	_, err := faceApp.RegisteByPath(context.Background(), &v1.RegisteRequest{Sync: true})
-	if err != nil {
-		logger.Log(log.LevelError, "注册照片，错误", err)
-	} else {
-		logger.Log(log.LevelInfo, "注册照片成功")
-
-		//todo 通知搜索服务加载数据
-
-		_, port, err := net.SplitHostPort(bc.Server.Http.Addr)
-		url := fmt.Sprintf("http://localhost:%s/face/reload", port)
-
-		data := map[string]interface{}{}
-		jsonData, _ := json.Marshal(data)
-
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-		if err != nil {
-			logger.Log(log.LevelInfo, "Failed to create request:", err)
-			return
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			logger.Log(log.LevelInfo, "Failed to send reques:", err)
-			return
-		}
-		defer resp.Body.Close()
-
-		logger.Log(log.LevelInfo, "通知搜索服务加载数据", "")
-
+func checkFileAndPush() {
+	registedSuccFace, registedFailedFace, newFace, err := face.RegFilePreProcess()
+	if err != nil && !os.IsNotExist(err) {
+		logger.Log(log.LevelError, "注册文件预处理出错RegFilePreProcess", err)
+		return
 	}
+
+	logger.Log(log.LevelInfo, "本次新增人脸", len(newFace), "之前注册成功人脸", len(registedSuccFace), "之前注册失败的人脸", len(registedFailedFace))
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for _, filename := range newFace {
+			regSerice.PushQueue(filename)
+		}
+	}()
+	wg.Wait()
+
+	// 通知搜索服务加载上一批数据
+	_, port, _ := net.SplitHostPort(bc.Server.Http.Addr)
+	resp, err := util.HttpPost(fmt.Sprintf("http://localhost:%s/face/reload", port), map[string]interface{}{})
+
+	logger.Log(log.LevelInfo, "通知搜索服务加载数据", "", err, string(resp))
 }
 
 func regieteHandle() {
-
-	registe()
+	checkFileAndPush()
 
 	regieteTimer := time.NewTicker(regieteTime)
 	defer regieteTimer.Stop()
@@ -128,6 +138,6 @@ func regieteHandle() {
 	for {
 		<-regieteTimer.C
 		logger.Log(log.LevelInfo, "定时执行注册照片", "")
-		registe()
+		checkFileAndPush()
 	}
 }

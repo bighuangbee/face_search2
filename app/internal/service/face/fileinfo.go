@@ -7,6 +7,7 @@ import (
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/rwcarlsen/goexif/exif"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -19,7 +20,7 @@ type FileInfo struct {
 var location, _ = time.LoadLocation("Asia/Shanghai")
 var timeFormat = "2006-01-02 15:04"
 
-func LoadFileInfo() map[string]*FileInfo {
+func LoadFileInfo(logger log.Logger) map[string]*FileInfo {
 	//fileList, err := util.GetFilesWithExtensions("../../../../libs/data/gallery", []string{".png", ".jpg", ".jpeg"})
 	fileList, err := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
 	if err != nil {
@@ -34,11 +35,21 @@ func LoadFileInfo() map[string]*FileInfo {
 			Filename:  filename,
 			Birthtime: t,
 		}
+
+		logger.Log(log.LevelInfo, "filename", filename, "GetBirthtime", t.Format(time.DateTime))
 	}
 	return FileInfoRepo
 }
 
 func GetBirthtime(filename string) (time.Time, error) {
+	//////unix获取不到Btim
+	//var stat unix.Stat_t
+	//if err := unix.Stat(filename, &stat); err != nil {
+	//	return time.Time{}, err
+	//}
+	//
+	//return time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).In(location), nil
+
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatalf("Error opening file: %v", err)
@@ -51,25 +62,16 @@ func GetBirthtime(filename string) (time.Time, error) {
 	}
 	return x.DateTime()
 
-	////unix获取不到Btim
-	//var stat unix.Stat_t
-	//if err := unix.Stat(filename, &stat); err != nil {
-	//	return time.Time{}, err
-	//}
-	//
-	//return time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).In(location), nil
 }
 
 // GetRangeFile 查找在指定时间范围内的文件
-func GetRangeFile(fileInfoList map[string]*FileInfo, startTimeStr string, endTimeStr string) (results []*FileInfo, err error) {
-
-	// 解析开始时间和结束时间字符串
-	startTime, err := time.ParseInLocation(timeFormat, startTimeStr, location)
+func GetRangeFile(fileInfoList sync.Map, startTimeStr string, endTimeStr string) (results []*face_wrapper.RegisteInfo, err error) {
+	startTime, err := time.Parse(timeFormat, startTimeStr)
 	if err != nil {
 		return nil, err
 	}
 
-	endTime, err := time.ParseInLocation(timeFormat, endTimeStr, location)
+	endTime, err := time.Parse(timeFormat, endTimeStr)
 	if err != nil {
 		return nil, err
 	}
@@ -80,11 +82,13 @@ func GetRangeFile(fileInfoList map[string]*FileInfo, startTimeStr string, endTim
 	}
 
 	// 查找在指定时间范围内的文件
-	for _, info := range fileInfoList {
+	fileInfoList.Range(func(key, value any) bool {
+		info := value.(face_wrapper.RegisteInfo)
 		if info.Birthtime.After(startTime) && info.Birthtime.Before(endTime) {
-			results = append(results, info)
+			results = append(results, &info)
 		}
-	}
+		return true
+	})
 
 	return results, nil
 }

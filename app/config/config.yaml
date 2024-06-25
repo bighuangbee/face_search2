@@ -11,7 +11,7 @@ logger:
   path: ./logs
 
 face:
-  registeTimer: 0 #定时注册，单位分钟，0=不启用
+  registeTimer: 1 #定时注册，单位分钟
   startUnRegiste: false #启动时注销以前的人脸
   match: 0.85
   matchTimeRange: 0 #只保留与算法匹配度最高的照片拍摄时间不超过matchTimeRange分钟， 0=不限制时间

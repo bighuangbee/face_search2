@@ -26,7 +26,7 @@ const OperationFaceRecognizeRegisteStatus = "/api.biz.v1.FaceRecognize/RegisteSt
 const OperationFaceRecognizeUnRegisteAll = "/api.biz.v1.FaceRecognize/UnRegisteAll"
 
 type FaceRecognizeHTTPServer interface {
-	FaceDbReload(context.Context, *EmptyRequest) (*EmptyReply, error)
+	FaceDbReload(context.Context, *EmptyRequest) (*NotifyReply, error)
 	// FaceSearchByDatetime人脸搜索-按时间日期范围
 	FaceSearchByDatetime(context.Context, *FaceSearchByDatetimeRequest) (*SearchResultReply, error)
 	// RegisteByPath人脸注册-从默认目录读取注册图
@@ -34,7 +34,7 @@ type FaceRecognizeHTTPServer interface {
 	// RegisteStatus人脸注册-获取状态
 	RegisteStatus(context.Context, *EmptyRequest) (*RegisteStatusReply, error)
 	// UnRegisteAll人脸注销-所有人脸
-	UnRegisteAll(context.Context, *EmptyRequest) (*EmptyReply, error)
+	UnRegisteAll(context.Context, *EmptyRequest) (*NotifyReply, error)
 }
 
 func RegisterFaceRecognizeHTTPServer(s *http.Server, srv FaceRecognizeHTTPServer) {
@@ -126,7 +126,7 @@ func _FaceRecognize_UnRegisteAll0_HTTP_Handler(srv FaceRecognizeHTTPServer) func
 		if err != nil {
 			return err
 		}
-		reply := out.(*EmptyReply)
+		reply := out.(*NotifyReply)
 		return ctx.Result(200, reply)
 	}
 }
@@ -148,17 +148,17 @@ func _FaceRecognize_FaceDbReload0_HTTP_Handler(srv FaceRecognizeHTTPServer) func
 		if err != nil {
 			return err
 		}
-		reply := out.(*EmptyReply)
+		reply := out.(*NotifyReply)
 		return ctx.Result(200, reply)
 	}
 }
 
 type FaceRecognizeHTTPClient interface {
-	FaceDbReload(ctx context.Context, req *EmptyRequest, opts ...http.CallOption) (rsp *EmptyReply, err error)
+	FaceDbReload(ctx context.Context, req *EmptyRequest, opts ...http.CallOption) (rsp *NotifyReply, err error)
 	FaceSearchByDatetime(ctx context.Context, req *FaceSearchByDatetimeRequest, opts ...http.CallOption) (rsp *SearchResultReply, err error)
 	RegisteByPath(ctx context.Context, req *RegisteRequest, opts ...http.CallOption) (rsp *RegisteByPathReply, err error)
 	RegisteStatus(ctx context.Context, req *EmptyRequest, opts ...http.CallOption) (rsp *RegisteStatusReply, err error)
-	UnRegisteAll(ctx context.Context, req *EmptyRequest, opts ...http.CallOption) (rsp *EmptyReply, err error)
+	UnRegisteAll(ctx context.Context, req *EmptyRequest, opts ...http.CallOption) (rsp *NotifyReply, err error)
 }
 
 type FaceRecognizeHTTPClientImpl struct {
@@ -169,8 +169,8 @@ func NewFaceRecognizeHTTPClient(client *http.Client) FaceRecognizeHTTPClient {
 	return &FaceRecognizeHTTPClientImpl{client}
 }
 
-func (c *FaceRecognizeHTTPClientImpl) FaceDbReload(ctx context.Context, in *EmptyRequest, opts ...http.CallOption) (*EmptyReply, error) {
-	var out EmptyReply
+func (c *FaceRecognizeHTTPClientImpl) FaceDbReload(ctx context.Context, in *EmptyRequest, opts ...http.CallOption) (*NotifyReply, error) {
+	var out NotifyReply
 	pattern := "/face/reload"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationFaceRecognizeFaceDbReload))
@@ -221,8 +221,8 @@ func (c *FaceRecognizeHTTPClientImpl) RegisteStatus(ctx context.Context, in *Emp
 	return &out, nil
 }
 
-func (c *FaceRecognizeHTTPClientImpl) UnRegisteAll(ctx context.Context, in *EmptyRequest, opts ...http.CallOption) (*EmptyReply, error) {
-	var out EmptyReply
+func (c *FaceRecognizeHTTPClientImpl) UnRegisteAll(ctx context.Context, in *EmptyRequest, opts ...http.CallOption) (*NotifyReply, error) {
+	var out NotifyReply
 	pattern := "/face/unregiste/all"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationFaceRecognizeUnRegisteAll))

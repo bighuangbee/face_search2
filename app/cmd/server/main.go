@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"flag"
-	"fmt"
 	"github.com/bighuangbee/face_search2/pkg/conf"
 	logger2 "github.com/bighuangbee/face_search2/pkg/logger"
 	"github.com/go-kratos/kratos/v2"
@@ -90,7 +88,7 @@ func main() {
 	bc.Face.FaceMode = conf.FaceMode_search
 
 	//todo 判断显存大小
-	go registeRun()
+	go registeRun(logger)
 
 	app, cleanup, err := wireApp(&bc, logger)
 	if err != nil {
@@ -103,26 +101,17 @@ func main() {
 	}
 }
 
-func registeRun() {
-
+func registeRun(logger log.Logger) {
 	//等待主进程启动
-	time.Sleep(15 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	//cmd := exec.Command("go", "run", "../registe/main.go")
-	cmd := exec.Command("../registe/registeBin")
+	//cmd := exec.Command("./registe-bin")
+	cmd := exec.Command("./registe-bin", "-conf", "/app/conf/config.yaml")
 
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-
+	logger.Log(log.LevelInfo, "启动注册服务registe-bin", "")
 	err := cmd.Run()
 	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
-	}
-
-	fmt.Printf("Output: %s\n", out.String())
-	if stderr.Len() > 0 {
-		fmt.Printf("Error: %s\n", stderr.String())
+		logger.Log(log.LevelError, "cmd.Run() failed", err)
 	}
 }

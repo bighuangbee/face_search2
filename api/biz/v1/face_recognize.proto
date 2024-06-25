@@ -34,14 +34,14 @@ service FaceRecognize {
   };
 
   //人脸注销-所有人脸
-  rpc UnRegisteAll (EmptyRequest) returns (EmptyReply) {
+  rpc UnRegisteAll (EmptyRequest) returns (NotifyReply) {
     option (google.api.http) = {
       post: "/face/unregiste/all"
       body: "*"
     };
   };
 
-  rpc FaceDbReload (EmptyRequest) returns (EmptyReply) {
+  rpc FaceDbReload (EmptyRequest) returns (NotifyReply) {
     option (google.api.http) = {
       post: "/face/reload"
       body: "*"
@@ -61,6 +61,10 @@ message RegisteRequest{
 message  FaceSearchByDatetimeRequest{
   string startTime = 1;
   string endTime = 2;
+}
+
+message NotifyReply{
+  bool ok = 1;
 }
 
 message RegisteStatusReply{

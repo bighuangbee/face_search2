@@ -11,7 +11,7 @@ func main() {
 
 	var basePath = "../../../../../"
 
-	err := face_wrapper.Init("/root/face_search/libs/models/", "./hiarClusterLog.txt")
+	err := face_wrapper.Init("/root/face_search/libs/models/", 0.8, "./")
 	if err != nil {
 		panic(err)
 	}

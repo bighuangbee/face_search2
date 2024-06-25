@@ -45,6 +45,7 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/face_search/libs/thirdparty/opencv4-f
 
 RUN go mod tidy
 RUN cd app/cmd/server && GOOS=linux GOARCH=amd64 go build -o srv-bin .
+RUN cd app/cmd/registe && GOOS=linux GOARCH=amd64 go build -o registe-bin .
 
 
 FROM nvidia/cuda:11.4.3-cudnn8-devel-ubuntu20.04
@@ -75,6 +76,7 @@ WORKDIR /app
 
 COPY --from=builder /root/face_search/libs /app/libs
 COPY --from=builder /root/face_search/app/cmd/server/srv-bin /app/srv-bin
+COPY --from=builder /root/face_search/app/cmd/registe/registe-bin /app/registe-bin
 COPY --from=builder /root/face_search/app/config/config.yaml /app/conf/config.yaml
 
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/app/libs/

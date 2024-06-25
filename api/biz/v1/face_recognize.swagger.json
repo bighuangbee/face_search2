@@ -79,7 +79,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1EmptyReply"
+              "$ref": "#/definitions/v1NotifyReply"
             }
           },
           "default": {
@@ -145,7 +145,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1EmptyReply"
+              "$ref": "#/definitions/v1NotifyReply"
             }
           },
           "default": {
@@ -202,9 +202,6 @@
         }
       }
     },
-    "v1EmptyReply": {
-      "type": "object"
-    },
     "v1EmptyRequest": {
       "type": "object"
     },
@@ -216,6 +213,14 @@
         },
         "endTime": {
           "type": "string"
+        }
+      }
+    },
+    "v1NotifyReply": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
         }
       }
     },

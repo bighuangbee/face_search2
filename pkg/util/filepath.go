@@ -45,7 +45,7 @@ func GetFilesWithExtensions(dir string, extensions []string) ([]string, error) {
 
 		// 转换路径分隔符为正斜杠
 		path = filepath.ToSlash(path)
-		
+
 		// 检查是否是文件，并且扩展名是否在指定的扩展名列表中
 		if !info.IsDir() && HasValidExtension(path, extensions) {
 			files = append(files, path)
@@ -123,7 +123,6 @@ func DetectAndDecode(input []byte) (string, error) {
 
 // 创建或打开当前日期的文件，并写入内容
 func CreateOrOpenFile(filename, content string) error {
-
 	// 判断文件是否存在
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		// 文件不存在，创建文件

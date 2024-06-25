@@ -12,7 +12,6 @@ import (
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/transport/http"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -27,29 +26,31 @@ var ErrorFaceSDK = errors.New(400, "ErrorFaceSDK", "ErrorFaceSDK")
 var ErrorFaceSearchEmpty = errors.New(400, "ErrorFaceSearchEmpty", "ErrorFaceSearchEmpty")
 
 type FaceRecognizeApp struct {
-	log          *log.Helper
-	data         *data.Data
-	registering  atomic.Bool
-	FileInfoRepo map[string]*FileInfo
-	bc           *conf.Bootstrap
+	logger      log.Logger
+	log         *log.Helper
+	data        *data.Data
+	registering atomic.Bool
+	bc          *conf.Bootstrap
+
+	regService *RegisteService
 }
 
 const FACE_REGISTE_PATH = "/hiar_face/registe_path"
 const FACE_REGISTE_LOGS = "/hiar_face/registe_logs"
 const FACE_SEARCH_RECORD = "/hiar_face/search_record"
+const FACE_REGISTE_FAILED = "/hiar_face/registe_failed"
 
-var logFilename = FACE_REGISTE_LOGS + "/" + time.Now().Format("2006-01-02") + ".txt"
+var registeLogFile = FACE_REGISTE_LOGS + "/" + time.Now().Format("2006-01-02") + ".txt"
 var searchRecordFilename = FACE_SEARCH_RECORD + "/" + time.Now().Format("2006-01-02") + ".txt"
 
 func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data) *FaceRecognizeApp {
-
 	app := FaceRecognizeApp{
-		log:  log.NewHelper(log.With(logger, "module", "service/FaceRecognizeApp")),
-		data: data,
-		bc:   bc,
+		logger:     logger,
+		log:        log.NewHelper(log.With(logger, "module", "service/FaceRecognizeApp")),
+		data:       data,
+		bc:         bc,
+		regService: NewRegisteService(logger),
 	}
-
-	app.log.Info("config", *bc)
 
 	face_registe_path := os.Getenv("face_registe_path")
 	if face_registe_path == "" {
@@ -64,6 +65,7 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 	os.MkdirAll(face_registe_path, 0755)
 	os.MkdirAll(FACE_REGISTE_LOGS, 0755)
 	os.MkdirAll(FACE_SEARCH_RECORD, 0755)
+	os.MkdirAll(FACE_REGISTE_FAILED, 0755)
 
 	app.log.Infow("face_registe_path", face_registe_path, "face_models_path", face_models_path)
 
@@ -79,28 +81,6 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 		panic(err)
 	}
 
-	//是否定期注册照片
-	if bc.Face.GetRegisteTimer() > 0 {
-		ticker := time.NewTicker(time.Minute * time.Duration(bc.Face.GetRegisteTimer()))
-		go func() {
-			defer ticker.Stop()
-			for {
-				<-ticker.C
-				if !app.registering.Load() {
-					app.registering.Store(true)
-					app.log.Infow("定时自动注册人脸", "")
-					registedFace, _, newFace := facePreProcessing(app.log)
-					app.registeFaceOneByOne(registedFace, newFace, true)
-					app.registering.Store(false)
-				} else {
-					app.log.Infow("定时自动注册人脸失败", "上次注册执行中")
-				}
-
-			}
-		}()
-	}
-
-	app.FileInfoRepo = LoadFileInfo()
 	return &app
 }
 
@@ -109,7 +89,7 @@ func (s *FaceRecognizeApp) RegisteByPath(ctx context.Context, req *pb.RegisteReq
 		return nil, ErrorFaceRegistering
 	}
 
-	registedSuccFace, registedFailedFace, newFace := facePreProcessing(s.log)
+	registedSuccFace, registedFailedFace, newFace, _ := RegFilePreProcess()
 	s.log.Infow("本次新增人脸", len(newFace), "之前注册成功人脸", len(registedSuccFace), "之前注册失败的人脸", len(registedFailedFace))
 
 	fn := func() {
@@ -117,8 +97,6 @@ func (s *FaceRecognizeApp) RegisteByPath(ctx context.Context, req *pb.RegisteReq
 		defer s.registering.Store(false)
 		//s.registeFace()
 		s.registeFaceOneByOne(registedSuccFace, newFace, false)
-
-		s.FileInfoRepo = LoadFileInfo()
 	}
 
 	if req.GetSync() {
@@ -141,19 +119,28 @@ func (s *FaceRecognizeApp) RegisteStatus(context.Context, *pb.EmptyRequest) (*pb
 	}, nil
 }
 
-func (s *FaceRecognizeApp) UnRegisteAll(ctx context.Context, req *pb.EmptyRequest) (*pb.EmptyReply, error) {
+func (s *FaceRecognizeApp) UnRegisteAll(ctx context.Context, req *pb.EmptyRequest) (*pb.NotifyReply, error) {
 	if s.registering.Load() {
 		return nil, ErrorFaceRegistering
 	}
 
-	os.Remove(logFilename)
+	os.Remove(registeLogFile)
+
+	s.regService.Repo.Range(func(key, value interface{}) bool {
+		s.regService.Repo.Delete(key)
+		return true
+	})
 
 	err := face_wrapper.UnRegisteAll()
 	if err != nil {
 		return nil, ErrorFaceSDK
 	}
 
-	return &pb.EmptyReply{}, nil
+	resp, err := util.HttpPost("http://localhost:6666/unregiste", map[string]interface{}{})
+
+	s.log.Log(log.LevelInfo, "通知【注册服务】", "", err, string(resp))
+
+	return &pb.NotifyReply{Ok: true}, nil
 }
 
 type SearchRecord struct {
@@ -235,8 +222,7 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 	go func() {
 		basePath := FACE_SEARCH_RECORD + "/" + time.Now().Format("2006-01-02") + "/"
 		os.MkdirAll(basePath, 0755)
-
-		ioutil.WriteFile(basePath+filename, image.Data, 0644)
+		os.WriteFile(basePath+filename, image.Data, 0644)
 
 		str, _ := json.Marshal(&SearchRecord{
 			Time:     util.GetLocTime(),
@@ -264,7 +250,7 @@ func (s *FaceRecognizeApp) FaceSearchByDatetime(ctx context.Context, req *pb.Fac
 
 	//按时间范围检索照片
 	if req.StartTime != "" && req.EndTime != "" {
-		fileInforesults, err := GetRangeFile(s.FileInfoRepo, req.StartTime, req.EndTime)
+		fileInforesults, err := GetRangeFile(s.regService.Repo, req.StartTime, req.EndTime)
 		if err != nil {
 			s.log.Errorw("GetRangeFile", err)
 			return nil, ErrorRequestFrom
@@ -299,7 +285,7 @@ func (s *FaceRecognizeApp) FaceSearchByDatetime(ctx context.Context, req *pb.Fac
 	return reply, err
 }
 
-func (s *FaceRecognizeApp) FaceDbReload(ctx context.Context, req *pb.EmptyRequest) (reply *pb.EmptyReply, err error) {
+func (s *FaceRecognizeApp) FaceDbReload(ctx context.Context, req *pb.EmptyRequest) (reply *pb.NotifyReply, err error) {
 	if err := copyFile(s.bc.Face.RegisteSvcPath+"/"+face_wrapper.DbName, s.bc.Face.SearchSvcPath+"/"+face_wrapper.DbName); err != nil {
 		s.log.Infow("复制db文件失败", err)
 		return nil, err
@@ -309,6 +295,7 @@ func (s *FaceRecognizeApp) FaceDbReload(ctx context.Context, req *pb.EmptyReques
 		s.log.Infow("SDK加载db失败", err)
 		return nil, err
 	}
-	s.log.Info("db复制并加载成功")
-	return nil, nil
+
+	s.log.Info("【搜索服务】db复制并加载成功")
+	return &pb.NotifyReply{Ok: true}, nil
 }

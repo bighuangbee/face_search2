@@ -37,8 +37,8 @@ type FaceRecognizeClient interface {
 	// 人脸搜索-按时间日期范围
 	FaceSearchByDatetime(ctx context.Context, in *FaceSearchByDatetimeRequest, opts ...grpc.CallOption) (*SearchResultReply, error)
 	// 人脸注销-所有人脸
-	UnRegisteAll(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*EmptyReply, error)
-	FaceDbReload(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*EmptyReply, error)
+	UnRegisteAll(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
+	FaceDbReload(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
 }
 
 type faceRecognizeClient struct {
@@ -79,9 +79,9 @@ func (c *faceRecognizeClient) FaceSearchByDatetime(ctx context.Context, in *Face
 	return out, nil
 }
 
-func (c *faceRecognizeClient) UnRegisteAll(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*EmptyReply, error) {
+func (c *faceRecognizeClient) UnRegisteAll(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NotifyReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(EmptyReply)
+	out := new(NotifyReply)
 	err := c.cc.Invoke(ctx, FaceRecognize_UnRegisteAll_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -89,9 +89,9 @@ func (c *faceRecognizeClient) UnRegisteAll(ctx context.Context, in *EmptyRequest
 	return out, nil
 }
 
-func (c *faceRecognizeClient) FaceDbReload(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*EmptyReply, error) {
+func (c *faceRecognizeClient) FaceDbReload(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NotifyReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(EmptyReply)
+	out := new(NotifyReply)
 	err := c.cc.Invoke(ctx, FaceRecognize_FaceDbReload_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -110,8 +110,8 @@ type FaceRecognizeServer interface {
 	// 人脸搜索-按时间日期范围
 	FaceSearchByDatetime(context.Context, *FaceSearchByDatetimeRequest) (*SearchResultReply, error)
 	// 人脸注销-所有人脸
-	UnRegisteAll(context.Context, *EmptyRequest) (*EmptyReply, error)
-	FaceDbReload(context.Context, *EmptyRequest) (*EmptyReply, error)
+	UnRegisteAll(context.Context, *EmptyRequest) (*NotifyReply, error)
+	FaceDbReload(context.Context, *EmptyRequest) (*NotifyReply, error)
 	mustEmbedUnimplementedFaceRecognizeServer()
 }
 
@@ -128,10 +128,10 @@ func (UnimplementedFaceRecognizeServer) RegisteStatus(context.Context, *EmptyReq
 func (UnimplementedFaceRecognizeServer) FaceSearchByDatetime(context.Context, *FaceSearchByDatetimeRequest) (*SearchResultReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FaceSearchByDatetime not implemented")
 }
-func (UnimplementedFaceRecognizeServer) UnRegisteAll(context.Context, *EmptyRequest) (*EmptyReply, error) {
+func (UnimplementedFaceRecognizeServer) UnRegisteAll(context.Context, *EmptyRequest) (*NotifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnRegisteAll not implemented")
 }
-func (UnimplementedFaceRecognizeServer) FaceDbReload(context.Context, *EmptyRequest) (*EmptyReply, error) {
+func (UnimplementedFaceRecognizeServer) FaceDbReload(context.Context, *EmptyRequest) (*NotifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FaceDbReload not implemented")
 }
 func (UnimplementedFaceRecognizeServer) mustEmbedUnimplementedFaceRecognizeServer() {}
