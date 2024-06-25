@@ -40,7 +40,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/v1EmptyRequest"
+              "$ref": "#/definitions/v1RegisteRequest"
             }
           }
         ],
@@ -233,6 +233,15 @@
         "newFaceNum": {
           "type": "integer",
           "format": "int32"
+        }
+      }
+    },
+    "v1RegisteRequest": {
+      "type": "object",
+      "properties": {
+        "sync": {
+          "type": "boolean",
+          "title": "是否阻塞执行"
         }
       }
     },

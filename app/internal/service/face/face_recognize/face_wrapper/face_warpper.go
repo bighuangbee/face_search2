@@ -24,6 +24,7 @@ void printImageInfo(ImageInfo* info, int count) {
 import "C"
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strconv"
 	"unsafe"
@@ -34,6 +35,8 @@ const OK = C.int(1)
 
 var PictureExt = []string{".png", ".jpg", ".jpeg"}
 
+var DbName = "hiar_cluster.db"
+
 type RegisteInfo struct {
 	Time     string `json:"time"`
 	Ok       bool   `json:"ok"`
@@ -41,9 +44,18 @@ type RegisteInfo struct {
 }
 
 func Init(modelPath string, match float32, svcPath string) error {
+	os.Mkdir(svcPath, 0755)
 	ret := C.hiarClusterInit(C.float(match), 20, C.CString(modelPath), C.CString(svcPath+"/hiarClusterLog.txt"), C.CString(svcPath))
 	if ret != 1 {
 		return errors.New("【Init】hiarClusterInit error, retCode:" + strconv.Itoa(int(ret)))
+	}
+	return nil
+}
+
+func LoadDB(svcPath string) error {
+	ret := C.hiarLoadDB(C.CString(svcPath))
+	if ret != 1 {
+		return errors.New("【LoadDB】hiarLoadDB error, retCode:" + strconv.Itoa(int(ret)))
 	}
 	return nil
 }

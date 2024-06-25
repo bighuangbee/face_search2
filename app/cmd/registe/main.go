@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	v1 "github.com/bighuangbee/face_search2/api/biz/v1"
 	"github.com/bighuangbee/face_search2/app/internal/service/face"
 	"github.com/bighuangbee/face_search2/pkg/conf"
 	logger2 "github.com/bighuangbee/face_search2/pkg/logger"
@@ -26,7 +27,7 @@ var (
 	bc       conf.Bootstrap
 )
 
-var regieteTime = time.Minute * 2
+var regieteTime = time.Minute * 3
 
 func init() {
 	flag.StringVar(&flagconf, "conf", "../../config", "config path, eg: -conf config.yaml")
@@ -82,7 +83,7 @@ func main() {
 }
 
 func registe() {
-	_, err := faceApp.RegisteByPath(context.Background(), nil)
+	_, err := faceApp.RegisteByPath(context.Background(), &v1.RegisteRequest{Sync: true})
 	if err != nil {
 		logger.Log(log.LevelError, "注册照片，错误", err)
 	} else {
@@ -126,6 +127,7 @@ func regieteHandle() {
 
 	for {
 		<-regieteTimer.C
+		logger.Log(log.LevelInfo, "定时执行注册照片", "")
 		registe()
 	}
 }

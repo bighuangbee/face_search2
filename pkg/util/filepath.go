@@ -43,6 +43,9 @@ func GetFilesWithExtensions(dir string, extensions []string) ([]string, error) {
 			return err
 		}
 
+		// 转换路径分隔符为正斜杠
+		path = filepath.ToSlash(path)
+		
 		// 检查是否是文件，并且扩展名是否在指定的扩展名列表中
 		if !info.IsDir() && HasValidExtension(path, extensions) {
 			files = append(files, path)

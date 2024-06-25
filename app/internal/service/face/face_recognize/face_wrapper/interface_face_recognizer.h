@@ -43,6 +43,12 @@ extern "C" {
         @param model_path
         */
         int hiarClusterInit(const float conf_thresh, const int top_k, const char* model_path, const char* logger_path, const char* db_path);
+          /**
+        adding images
+        @param db_path the path of hiar_cluster.db's directory, default is nullptr,indicating db_path is "./db_tmp"
+        @return  int   >=1 is ok, else is failure.
+        */
+        int hiarLoadDB(const char* db_path);
         /**
         adding images
         @param input_list      [input] list of image filename which will be registed.fg.["D:/hiar/gallery/1.jpg", "D:/hiar/gallery/2.jpg"]

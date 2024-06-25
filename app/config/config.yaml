@@ -6,9 +6,6 @@ server:
   http: #搜索服务
     addr: 0.0.0.0:6002
     timeout: 60s
-  httpRegiste: #注册服务
-    addr: 0.0.0.0:6001
-    timeout: 60s
 
 logger:
   path: ./logs

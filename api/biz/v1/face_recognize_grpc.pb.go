@@ -31,7 +31,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FaceRecognizeClient interface {
 	// 人脸注册-从默认目录读取注册图
-	RegisteByPath(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*RegisteByPathReply, error)
+	RegisteByPath(ctx context.Context, in *RegisteRequest, opts ...grpc.CallOption) (*RegisteByPathReply, error)
 	// 人脸注册-获取状态
 	RegisteStatus(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*RegisteStatusReply, error)
 	// 人脸搜索-按时间日期范围
@@ -49,7 +49,7 @@ func NewFaceRecognizeClient(cc grpc.ClientConnInterface) FaceRecognizeClient {
 	return &faceRecognizeClient{cc}
 }
 
-func (c *faceRecognizeClient) RegisteByPath(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*RegisteByPathReply, error) {
+func (c *faceRecognizeClient) RegisteByPath(ctx context.Context, in *RegisteRequest, opts ...grpc.CallOption) (*RegisteByPathReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RegisteByPathReply)
 	err := c.cc.Invoke(ctx, FaceRecognize_RegisteByPath_FullMethodName, in, out, cOpts...)
@@ -104,7 +104,7 @@ func (c *faceRecognizeClient) FaceDbReload(ctx context.Context, in *EmptyRequest
 // for forward compatibility
 type FaceRecognizeServer interface {
 	// 人脸注册-从默认目录读取注册图
-	RegisteByPath(context.Context, *EmptyRequest) (*RegisteByPathReply, error)
+	RegisteByPath(context.Context, *RegisteRequest) (*RegisteByPathReply, error)
 	// 人脸注册-获取状态
 	RegisteStatus(context.Context, *EmptyRequest) (*RegisteStatusReply, error)
 	// 人脸搜索-按时间日期范围
@@ -119,7 +119,7 @@ type FaceRecognizeServer interface {
 type UnimplementedFaceRecognizeServer struct {
 }
 
-func (UnimplementedFaceRecognizeServer) RegisteByPath(context.Context, *EmptyRequest) (*RegisteByPathReply, error) {
+func (UnimplementedFaceRecognizeServer) RegisteByPath(context.Context, *RegisteRequest) (*RegisteByPathReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisteByPath not implemented")
 }
 func (UnimplementedFaceRecognizeServer) RegisteStatus(context.Context, *EmptyRequest) (*RegisteStatusReply, error) {
@@ -148,7 +148,7 @@ func RegisterFaceRecognizeServer(s grpc.ServiceRegistrar, srv FaceRecognizeServe
 }
 
 func _FaceRecognize_RegisteByPath_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EmptyRequest)
+	in := new(RegisteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func _FaceRecognize_RegisteByPath_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: FaceRecognize_RegisteByPath_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FaceRecognizeServer).RegisteByPath(ctx, req.(*EmptyRequest))
+		return srv.(FaceRecognizeServer).RegisteByPath(ctx, req.(*RegisteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

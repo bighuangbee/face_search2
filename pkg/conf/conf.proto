@@ -33,10 +33,6 @@ message Server {
     string addr = 2;
     google.protobuf.Duration timeout = 3;
   }
-  message HttpRegiste {
-    string addr = 2;
-    google.protobuf.Duration timeout = 3;
-  }
   message GRPC {
     string network = 1;
     string addr = 2;
@@ -143,7 +139,7 @@ message Face{
   int32 registeTimer = 1;
   float match = 2;
   int32 matchTimeRange = 3;
-  string RegisteSvcPath = 4;
-  string SearchSvcPath = 5;
-  FaceMode FaceMode = 6;
+  string registeSvcPath = 4;
+  string searchSvcPath = 5;
+  FaceMode faceMode = 6;
 }

@@ -233,6 +233,108 @@ var _ interface {
 	ErrorName() string
 } = EmptyRequestValidationError{}
 
+// Validate checks the field values on RegisteRequest with the rules defined in
+// the proto definition for this message. If any rules are violated, the first
+// error encountered is returned, or nil if there are no violations.
+func (m *RegisteRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on RegisteRequest with the rules defined
+// in the proto definition for this message. If any rules are violated, the
+// result is a list of violation errors wrapped in RegisteRequestMultiError,
+// or nil if none found.
+func (m *RegisteRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *RegisteRequest) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Sync
+
+	if len(errors) > 0 {
+		return RegisteRequestMultiError(errors)
+	}
+
+	return nil
+}
+
+// RegisteRequestMultiError is an error wrapping multiple validation errors
+// returned by RegisteRequest.ValidateAll() if the designated constraints
+// aren't met.
+type RegisteRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m RegisteRequestMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m RegisteRequestMultiError) AllErrors() []error { return m }
+
+// RegisteRequestValidationError is the validation error returned by
+// RegisteRequest.Validate if the designated constraints aren't met.
+type RegisteRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e RegisteRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e RegisteRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e RegisteRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e RegisteRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e RegisteRequestValidationError) ErrorName() string { return "RegisteRequestValidationError" }
+
+// Error satisfies the builtin error interface
+func (e RegisteRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sRegisteRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = RegisteRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = RegisteRequestValidationError{}
+
 // Validate checks the field values on FaceSearchByDatetimeRequest with the
 // rules defined in the proto definition for this message. If any rules are
 // violated, the first error encountered is returned, or nil if there are no violations.

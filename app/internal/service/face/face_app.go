@@ -49,6 +49,8 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 		bc:   bc,
 	}
 
+	app.log.Info("config", *bc)
+
 	face_registe_path := os.Getenv("face_registe_path")
 	if face_registe_path == "" {
 		face_registe_path = FACE_REGISTE_PATH
@@ -69,6 +71,9 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 	if bc.Face.FaceMode == conf.FaceMode_registe {
 		svcPath = bc.Face.RegisteSvcPath
 	}
+	os.MkdirAll(bc.Face.RegisteSvcPath, 0755)
+	os.MkdirAll(bc.Face.SearchSvcPath, 0755)
+
 	if err := face_wrapper.Init(face_models_path, bc.Face.GetMatch(), svcPath); err != nil {
 		app.log.Infow("【NewFaceRecognizeApp】face_wrapper init", err)
 		panic(err)
@@ -99,7 +104,7 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 	return &app
 }
 
-func (s *FaceRecognizeApp) RegisteByPath(context.Context, *pb.EmptyRequest) (*pb.RegisteByPathReply, error) {
+func (s *FaceRecognizeApp) RegisteByPath(ctx context.Context, req *pb.RegisteRequest) (*pb.RegisteByPathReply, error) {
 	if s.registering.Load() {
 		return nil, ErrorFaceRegistering
 	}
@@ -107,14 +112,21 @@ func (s *FaceRecognizeApp) RegisteByPath(context.Context, *pb.EmptyRequest) (*pb
 	registedSuccFace, registedFailedFace, newFace := facePreProcessing(s.log)
 	s.log.Infow("本次新增人脸", len(newFace), "之前注册成功人脸", len(registedSuccFace), "之前注册失败的人脸", len(registedFailedFace))
 
-	go func() {
+	fn := func() {
 		s.registering.Store(true)
 		defer s.registering.Store(false)
 		//s.registeFace()
 		s.registeFaceOneByOne(registedSuccFace, newFace, false)
 
 		s.FileInfoRepo = LoadFileInfo()
-	}()
+	}
+
+	if req.GetSync() {
+		//阻塞运行耗时久，不适合http调用
+		fn()
+	} else {
+		go fn()
+	}
 
 	return &pb.RegisteByPathReply{
 		RegistedSuccNum:   int32(len(registedSuccFace)),
@@ -288,6 +300,15 @@ func (s *FaceRecognizeApp) FaceSearchByDatetime(ctx context.Context, req *pb.Fac
 }
 
 func (s *FaceRecognizeApp) FaceDbReload(ctx context.Context, req *pb.EmptyRequest) (reply *pb.EmptyReply, err error) {
-	s.log.Infow("FaceDbReload  123")
+	if err := copyFile(s.bc.Face.RegisteSvcPath+"/"+face_wrapper.DbName, s.bc.Face.SearchSvcPath+"/"+face_wrapper.DbName); err != nil {
+		s.log.Infow("复制db文件失败", err)
+		return nil, err
+	}
+
+	if err := face_wrapper.LoadDB(s.bc.Face.SearchSvcPath); err != nil {
+		s.log.Infow("SDK加载db失败", err)
+		return nil, err
+	}
+	s.log.Info("db复制并加载成功")
 	return nil, nil
 }

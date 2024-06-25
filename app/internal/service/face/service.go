@@ -8,12 +8,10 @@ import (
 	"github.com/bighuangbee/face_search2/pkg/util"
 	"github.com/go-kratos/kratos/v2/log"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -24,23 +22,23 @@ import (
 func facePreProcessing(log *log.Helper) (registedSuccFace []string, registedFailedFace []string, newFace []string) {
 
 	//对容器内注册文件重命名
-	files, err := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
-	if err != nil {
-		log.Errorw("【RegisteByPath】GetFilesWithExtensions", err)
-		return
-	}
-
-	renameFlag := "_"
-	fileflag := "_" + time.Now().Format("01021504") + renameFlag
-	for _, filename := range files {
-		if !strings.HasSuffix(filename, renameFlag+filepath.Ext(filename)) {
-			rename := filepath.Dir(filename) + "/" + util.GetFileName(filename) + fileflag + filepath.Ext(filename)
-			if err := os.Rename(filename, rename); err != nil {
-				log.Warnf("os.Rename", err)
-			}
-			//log.Infow("注册图重命名", "", "filename", filename, "rename", rename)
-		}
-	}
+	//files, err := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
+	//if err != nil {
+	//	log.Errorw("【RegisteByPath】GetFilesWithExtensions", err)
+	//	return
+	//}
+	//
+	//renameFlag := "_"
+	//fileflag := "_" + time.Now().Format("01021504") + renameFlag
+	//for _, filename := range files {
+	//	if !strings.HasSuffix(filename, renameFlag+filepath.Ext(filename)) {
+	//		rename := filepath.Dir(filename) + "/" + util.GetFileName(filename) + fileflag + filepath.Ext(filename)
+	//		if err := os.Rename(filename, rename); err != nil {
+	//			log.Warnf("os.Rename", err)
+	//		}
+	//		//log.Infow("注册图重命名", "", "filename", filename, "rename", rename)
+	//	}
+	//}
 
 	fileList, err := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
 	if err != nil {
@@ -57,6 +55,7 @@ func facePreProcessing(log *log.Helper) (registedSuccFace []string, registedFail
 	}
 	defer file.Close()
 
+	//检查注册日志，不重复注册
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := face_wrapper.RegisteInfo{}
@@ -107,7 +106,7 @@ func (s *FaceRecognizeApp) registeFaceOneByOne(registedFace []string, newFace []
 
 	for index, filename := range newFace {
 		t1 := time.Now()
-		imageFile, err := ioutil.ReadFile(filename)
+		imageFile, err := os.ReadFile(filename)
 		if err != nil {
 			s.log.Infow("ReadFile error", filename)
 			continue
@@ -217,4 +216,34 @@ func receiveFaceFile(request *http.Request) (image *face_wrapper.Image, filename
 
 	filename = fileHeader.Filename
 	return
+}
+
+// copyFile 复制文件，如果目标文件已存在则覆盖
+func copyFile(src, dst string) error {
+	srcF, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("failed to open source file: %w", err)
+	}
+	defer srcF.Close()
+
+	// 打开（创建或覆盖）目标文件
+	dstF, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("failed to create destination file: %w", err)
+	}
+	defer dstF.Close()
+
+	// 将源文件内容复制到目标文件
+	_, err = io.Copy(dstF, srcF)
+	if err != nil {
+		return fmt.Errorf("failed to copy file: %w", err)
+	}
+
+	// 刷新写入的内容
+	err = dstF.Sync()
+	if err != nil {
+		return fmt.Errorf("failed to sync destination file: %w", err)
+	}
+
+	return nil
 }
