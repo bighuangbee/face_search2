@@ -63,7 +63,7 @@ func (s *RegisteService) Run() {
 		}
 
 		s.Repo.Store(info.Filename, info)
-		
+
 		s.logger.Log(log.LevelInfo, "注册结果 ok", regInfo.Ok, "fielname", info.Filename, "耗时", time.Since(t1))
 	}
 }
@@ -80,12 +80,12 @@ func (s *RegisteService) Reg(filename string) (regInfo *face_wrapper.RegisteInfo
 		Data:     imageFile,
 	}, filename)
 
-	bTime, _ := GetBirthtime(filename)
+	bTime, _ := GetShootTime(filename)
 	regInfo = &face_wrapper.RegisteInfo{
 		Filename:  filename,
 		Ok:        false,
 		Time:      util.GetLocTime(),
-		Birthtime: bTime,
+		ShootTime: bTime,
 	}
 
 	if regError == nil {

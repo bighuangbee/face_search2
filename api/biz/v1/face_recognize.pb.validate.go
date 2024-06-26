@@ -1155,6 +1155,8 @@ func (m *SearchResult) validate(all bool) error {
 
 	// no validation rules for Match
 
+	// no validation rules for ShootTime
+
 	if len(errors) > 0 {
 		return SearchResultMultiError(errors)
 	}

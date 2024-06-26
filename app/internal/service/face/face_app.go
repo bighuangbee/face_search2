@@ -172,15 +172,15 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 	startTime := time.Time{}
 	endTime := time.Time{}
 	if len(results) > 0 && s.bc.Face.GetMatchTimeRange() > 0 {
-		t, _ := GetBirthtime(results[0].RegFilename)
+		t, _ := GetShootTime(results[0].RegFilename)
 		startTime = t.Add(time.Duration(-s.bc.Face.GetMatchTimeRange()) * time.Minute)
 		endTime = t.Add(time.Duration(s.bc.Face.GetMatchTimeRange()) * time.Minute)
 
-		fmt.Println("GetBirthtime", t.String(), "startTime", startTime.String(), "endTime", endTime.String())
+		fmt.Println("GetShootTime", t.String(), "startTime", startTime.String(), "endTime", endTime.String())
 	}
 	for _, result := range results {
+		t, _ := GetShootTime(result.RegFilename)
 		if s.bc.Face.GetMatchTimeRange() > 0 {
-			t, _ := GetBirthtime(result.RegFilename)
 			if !(t.After(startTime) && t.Before(endTime)) {
 				fmt.Printf(" 排除result.RegFilename", result.RegFilename)
 				continue
@@ -188,8 +188,9 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 		}
 
 		reply.Results = append(reply.Results, &pb.SearchResult{
-			Filename: result.RegFilename,
-			Match:    result.Match,
+			Filename:  result.RegFilename,
+			Match:     result.Match,
+			ShootTime: t.Format("01-02 15:04:05"),
 		})
 
 	}
@@ -257,7 +258,8 @@ func (s *FaceRecognizeApp) FaceSearchByDatetime(ctx context.Context, req *pb.Fac
 		}
 		for _, result := range fileInforesults {
 			reply.Results = append(reply.Results, &pb.SearchResult{
-				Filename: result.Filename,
+				Filename:  result.Filename,
+				ShootTime: result.ShootTime.Format("01-02 15:04:05"),
 			})
 
 			searchRecord.Results = append(searchRecord.Results, &face_wrapper.FaceEntity{
@@ -286,14 +288,28 @@ func (s *FaceRecognizeApp) FaceSearchByDatetime(ctx context.Context, req *pb.Fac
 }
 
 func (s *FaceRecognizeApp) FaceDbReload(ctx context.Context, req *pb.EmptyRequest) (reply *pb.NotifyReply, err error) {
-	if err := copyFile(s.bc.Face.RegisteSvcPath+"/"+face_wrapper.DbName, s.bc.Face.SearchSvcPath+"/"+face_wrapper.DbName); err != nil {
+	if err = copyFile(s.bc.Face.RegisteSvcPath+"/"+face_wrapper.DbName, s.bc.Face.SearchSvcPath+"/"+face_wrapper.DbName); err != nil {
 		s.log.Infow("复制db文件失败", err)
-		return nil, err
 	}
 
-	if err := face_wrapper.LoadDB(s.bc.Face.SearchSvcPath); err != nil {
+	if err = face_wrapper.LoadDB(s.bc.Face.SearchSvcPath); err != nil {
 		s.log.Infow("SDK加载db失败", err)
-		return nil, err
+	}
+
+	fileList, err1 := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
+	if err1 != nil {
+		s.log.Infow("GetFilesWithExtensions", err)
+		err = err1
+	} else {
+		s.log.Info("加载RegisteInfo")
+		for _, filename := range fileList {
+			t, _ := GetShootTime(filename)
+			s.regService.Repo.Store(filename, face_wrapper.RegisteInfo{
+				Filename:  filename,
+				ShootTime: t,
+			})
+		}
+
 	}
 
 	s.log.Info("【搜索服务】db复制并加载成功")

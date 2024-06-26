@@ -97,4 +97,5 @@ message SearchResultReply{
 message SearchResult{
   string filename = 1;
   float match = 2;
+  string shootTime = 3;
 }

@@ -267,6 +267,9 @@
         "match": {
           "type": "number",
           "format": "float"
+        },
+        "shootTime": {
+          "type": "string"
         }
       }
     },

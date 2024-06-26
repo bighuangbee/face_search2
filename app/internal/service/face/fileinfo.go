@@ -30,18 +30,18 @@ func LoadFileInfo(logger log.Logger) map[string]*FileInfo {
 
 	var FileInfoRepo = make(map[string]*FileInfo, 0)
 	for _, filename := range fileList {
-		t, _ := GetBirthtime(filename)
+		t, _ := GetShootTime(filename)
 		FileInfoRepo[filename] = &FileInfo{
 			Filename:  filename,
 			Birthtime: t,
 		}
 
-		logger.Log(log.LevelInfo, "filename", filename, "GetBirthtime", t.Format(time.DateTime))
+		logger.Log(log.LevelInfo, "filename", filename, "GetShootTime", t.Format(time.DateTime))
 	}
 	return FileInfoRepo
 }
 
-func GetBirthtime(filename string) (time.Time, error) {
+func GetShootTime(filename string) (time.Time, error) {
 	//////unix获取不到Btim
 	//var stat unix.Stat_t
 	//if err := unix.Stat(filename, &stat); err != nil {
@@ -84,7 +84,7 @@ func GetRangeFile(fileInfoList sync.Map, startTimeStr string, endTimeStr string)
 	// 查找在指定时间范围内的文件
 	fileInfoList.Range(func(key, value any) bool {
 		info := value.(face_wrapper.RegisteInfo)
-		if info.Birthtime.After(startTime) && info.Birthtime.Before(endTime) {
+		if info.ShootTime.After(startTime) && info.ShootTime.Before(endTime) {
 			results = append(results, &info)
 		}
 		return true

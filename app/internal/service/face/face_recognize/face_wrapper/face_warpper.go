@@ -42,7 +42,7 @@ type RegisteInfo struct {
 	Time      string `json:"time"` //注册时间
 	Ok        bool   `json:"ok"`
 	Filename  string `json:"filename"` //拍摄时间
-	Birthtime time.Time
+	ShootTime time.Time
 }
 
 func Init(modelPath string, match float32, svcPath string) error {

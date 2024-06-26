@@ -32,10 +32,11 @@ docker run -d --runtime=nvidia --gpus all -p 22:22 -p 6001:6002 --privileged=tru
 
 构建app
 docker build -t face_jq_app .
-docker run -d --runtime=nvidia --gpus all -p 23:22 -p 6002:6002 --privileged=true -v C:\hiar_face:/hiar_face --env face_models_path=/app/libs/models --name face_jq_app face_jq_app
+docker run -d --runtime=nvidia --gpus all -p 23:22 -p 6002:6002 --privileged=true -v C:\hiar_face:/hiar_face -v C:\hiar_face/docker_logs:/app/logs --env face_models_path=/app/libs/models --name face_jq_app face_jq_app
+
 
 docker build -t face_jq_app:v0.2 .
-docker run -d --runtime=nvidia --gpus all -p 23:22 -p 6002:6002 --privileged=true -v C:\hiar_face:/hiar_face --env face_models_path=/app/libs/models --name face_jq_app:v0.2 face_jq_app
+docker run -d --runtime=nvidia --gpus all -p 23:22 -p 6002:6002 --privileged=true -v C:\hiar_face:/hiar_face -v C:\hiar_face/docker_logs:/app/logs --env face_models_path=/app/libs/models --name face_jq_app face_jq_app:v0.2
 
 ```
 
