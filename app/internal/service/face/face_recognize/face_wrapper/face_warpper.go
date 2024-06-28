@@ -101,7 +101,9 @@ func RegisteSingle(image *Image, filename string) (err error) {
 }
 
 func Search(image *Image) (results []*FaceEntity) {
-
+	if len(image.Data) == 0 {
+		return
+	}
 	var imageData C.ImageData
 	imageData.data = (*C.uchar)((unsafe.Pointer)(&image.Data[0]))
 	imageData.data_len = C.int(len(image.Data))
