@@ -24,8 +24,8 @@ void printImageInfo(ImageInfo* info, int count) {
 import "C"
 import (
 	"errors"
+	"gorm.io/gorm"
 	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 	"unsafe"
@@ -39,10 +39,11 @@ var PictureExt = []string{".png", ".jpg", ".jpeg"}
 var DbName = "hiar_cluster.db"
 
 type RegisteInfo struct {
-	Time      string `json:"time"` //注册时间
-	Ok        bool   `json:"ok"`
-	Filename  string `json:"filename"` //拍摄时间
-	ShootTime time.Time
+	Time      string         `json:"time"` //注册时间
+	Ok        bool           `json:"ok"`
+	Filename  string         `json:"filename"` //拍摄时间
+	ShootTime time.Time      `json:"shoot_time"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
 func Init(modelPath string, match float32, svcPath string) error {
@@ -142,7 +143,7 @@ func UnRegisteAll() error {
 
 func UnRegiste(filename string) error {
 	ret := C.hiarDelImages(&C.ImageInfo{
-		filename: toCString(filepath.Base(filename)),
+		filename: toCString(filename),
 	}, 1)
 	if ret != 1 {
 		return errors.New("【UnRegiste】hiarDelImages error, retCode:" + strconv.Itoa(int(ret)))

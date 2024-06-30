@@ -142,4 +142,5 @@ message Face{
   string registeSvcPath = 4;
   string searchSvcPath = 5;
   FaceMode faceMode = 6;
+  int32 effectiveTime= 7;
 }

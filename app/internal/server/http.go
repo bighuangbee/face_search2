@@ -129,14 +129,12 @@ func NewHTTPServer(
 	}
 	if c.Server.Http.Addr != "" {
 		opts = append(opts, http.Address(c.Server.Http.Addr))
-		opts = append(opts, http.Address(c.Server.Http.Addr))
 	}
 	if c.Server.Http.Timeout != nil {
 		opts = append(opts, http.Timeout(c.Server.Http.Timeout.AsDuration()))
 	}
 	srv := http.NewServer(opts...)
 	pb.RegisterFaceRecognizeHTTPServer(srv, faceRecognize)
-
 	srv.Handle("/debug/pprof/", pprof.NewHandler())
 
 	route := srv.Route("/")

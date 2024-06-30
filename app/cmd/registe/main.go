@@ -68,14 +68,19 @@ func main() {
 	}
 	regieteTime = time.Minute * time.Duration(bc.Face.RegisteTimer)
 
+	fmt.Println(1)
 	//算法初始化
-	face.NewFaceRecognizeApp(logger, &bc, nil)
+	app := face.NewFaceRecognizeApp(logger, &bc, nil)
+	fmt.Println(2)
+	regSerice = app.RegService
+
+	fmt.Println(3)
+	//处理队列，执行注册
+	go regSerice.Run()
+	fmt.Println(4)
+
 	//定时检查新文件，放入注册队列
 	go regieteHandle()
-
-	//处理队列，执行注册
-	regSerice = face.NewRegisteService(logger)
-	go regSerice.Run()
 
 	router := gin.Default()
 	gin.SetMode(gin.ReleaseMode)
@@ -86,25 +91,21 @@ func main() {
 			logger.Log(log.LevelError, "UnRegisteAll", err)
 		}
 
-		//os.Remove(registeLogFile)
-
-		regSerice.Repo.Range(func(key, value interface{}) bool {
-			regSerice.Repo.Delete(key)
-			return true
-		})
 	})
 
 	router.POST("/registe", func(c *gin.Context) {
-		checkFileAndPush()
+		readPhotosAndPushQueue()
 	})
 
-	logger.Log(log.LevelInfo, "照片注册服务启动")
+	logger.Log(log.LevelInfo, "照片注册服务启动", "")
 
 	router.Run(":" + fmt.Sprintf("%d", 6666))
 }
 
-func checkFileAndPush() {
-	registedSuccFace, registedFailedFace, newFace, err := face.RegFilePreProcess()
+func readPhotosAndPushQueue() {
+	regSerice.CheckExpired()
+
+	registedSuccFace, registedFailedFace, newFace, err := regSerice.RegFilePreProcess()
 	if err != nil && !os.IsNotExist(err) {
 		logger.Log(log.LevelError, "注册文件预处理出错RegFilePreProcess", err)
 		return
@@ -126,11 +127,18 @@ func checkFileAndPush() {
 	_, port, _ := net.SplitHostPort(bc.Server.Http.Addr)
 	resp, err := util.HttpPost(fmt.Sprintf("http://localhost:%s/face/reload", port), map[string]interface{}{})
 
+	util.HttpPost(fmt.Sprintf("http://localhost:%s/face/reload", 6003), map[string]interface{}{})
+
 	logger.Log(log.LevelInfo, "通知搜索服务加载数据", "", err, string(resp))
 }
 
 func regieteHandle() {
-	checkFileAndPush()
+	readPhotosAndPushQueue()
+
+	//logger.Log(log.LevelInfo, "测试注销  DSC00001", face.FACE_REGISTE_PATH+"/DSC00001.JPG")
+	//if err := face_wrapper.UnRegiste(face.FACE_REGISTE_PATH + "/DSC00001.JPG"); err != nil {
+	//	logger.Log(log.LevelError, "face_wrapper.UnRegiste error", err, "filename", "filename")
+	//}
 
 	regieteTimer := time.NewTicker(regieteTime)
 	defer regieteTimer.Stop()
@@ -138,6 +146,6 @@ func regieteHandle() {
 	for {
 		<-regieteTimer.C
 		logger.Log(log.LevelInfo, "定时执行注册照片", "")
-		checkFileAndPush()
+		readPhotosAndPushQueue()
 	}
 }

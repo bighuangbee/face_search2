@@ -32,7 +32,7 @@ type FaceRecognizeApp struct {
 	registering atomic.Bool
 	bc          *conf.Bootstrap
 
-	regService *RegisteService
+	RegService *RegisteService
 }
 
 const FACE_REGISTE_PATH = "/hiar_face/registe_path"
@@ -40,7 +40,9 @@ const FACE_REGISTE_LOGS = "/hiar_face/registe_logs"
 const FACE_SEARCH_RECORD = "/hiar_face/search_record"
 const FACE_REGISTE_FAILED = "/hiar_face/registe_failed"
 
-var registeLogFile = FACE_REGISTE_LOGS + "/" + time.Now().Format("2006-01-02") + ".txt"
+var registeDataLogsDay = FACE_REGISTE_LOGS + "/" + time.Now().Format("2006-01-02") + ".txt"
+var registeDataLogs = FACE_REGISTE_LOGS + "/data_logs.txt"
+var registeDb = FACE_REGISTE_LOGS + "/face.db"
 var searchRecordFilename = FACE_SEARCH_RECORD + "/" + time.Now().Format("2006-01-02") + ".txt"
 
 func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data) *FaceRecognizeApp {
@@ -49,9 +51,8 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 		log:        log.NewHelper(log.With(logger, "module", "service/FaceRecognizeApp")),
 		data:       data,
 		bc:         bc,
-		regService: NewRegisteService(logger),
+		RegService: NewRegisteService(logger, bc),
 	}
-
 	face_registe_path := os.Getenv("face_registe_path")
 	if face_registe_path == "" {
 		face_registe_path = FACE_REGISTE_PATH
@@ -80,7 +81,7 @@ func NewFaceRecognizeApp(logger log.Logger, bc *conf.Bootstrap, data *data.Data)
 		app.log.Infow("【NewFaceRecognizeApp】face_wrapper init", err)
 		panic(err)
 	}
-
+	fmt.Printf("NewFaceRecognizeApp1 4")
 	return &app
 }
 
@@ -89,7 +90,7 @@ func (s *FaceRecognizeApp) RegisteByPath(ctx context.Context, req *pb.RegisteReq
 		return nil, ErrorFaceRegistering
 	}
 
-	registedSuccFace, registedFailedFace, newFace, _ := RegFilePreProcess()
+	registedSuccFace, registedFailedFace, newFace, _ := s.RegService.RegFilePreProcess()
 	s.log.Infow("本次新增人脸", len(newFace), "之前注册成功人脸", len(registedSuccFace), "之前注册失败的人脸", len(registedFailedFace))
 
 	fn := func() {
@@ -124,21 +125,25 @@ func (s *FaceRecognizeApp) UnRegisteAll(ctx context.Context, req *pb.EmptyReques
 		return nil, ErrorFaceRegistering
 	}
 
-	os.Remove(registeLogFile)
-
-	s.regService.Repo.Range(func(key, value interface{}) bool {
-		s.regService.Repo.Delete(key)
-		return true
-	})
-
 	err := face_wrapper.UnRegisteAll()
 	if err != nil {
 		return nil, ErrorFaceSDK
 	}
 
+	values, err := s.RegService.FaceDb.ReadBatch()
+	if err != nil {
+		s.log.Log(log.LevelError, "regService.FaceDb.ReadBatch", err)
+	}
+
+	for _, value := range values {
+		if err := s.RegService.FaceDb.Delete(value.Filename); err != nil {
+			s.log.Log(log.LevelInfo, "regService.FaceDb.Delete", err)
+		}
+	}
+
 	resp, err := util.HttpPost("http://localhost:6666/unregiste", map[string]interface{}{})
 
-	s.log.Log(log.LevelInfo, "通知【注册服务】", "", err, string(resp))
+	s.log.Log(log.LevelInfo, "通知【注册服务】", "注销全部照片", err, string(resp))
 
 	return &pb.NotifyReply{Ok: true}, nil
 }
@@ -195,27 +200,6 @@ func (s *FaceRecognizeApp) Search(ctx context.Context) (reply *pb.SearchResultRe
 
 	}
 
-	//startTime := request.FormValue("startTime")
-	//endTime := request.FormValue("endTime")
-
-	//s.log.Infow("Search formdata", "", "inputTimeStr", startTime, "endTime", endTime)
-
-	////算法搜索不到结果时，按时间范围检索图片
-	//if len(results) == 0 && startTime != "" && endTime != "" {
-	//	fileInforesults, err := GetRangeFile(s.FileInfoRepo, startTime, endTime)
-	//	if err != nil {
-	//		s.log.Errorw("GetRangeFile", err)
-	//		return nil, ErrorRequestFrom
-	//	}
-	//	for _, result := range fileInforesults {
-	//		reply.Results = append(reply.Results, &pb.SearchResult{
-	//			Filename: result.Filename,
-	//		})
-	//	}
-	//
-	//	s.log.Infow("算法检索不到结果, 进行文件时间检索, 结果数量:", len(fileInforesults), "fileInforesults", fileInforesults)
-	//}
-
 	if len(reply.Results) == 0 {
 		err = ErrorFaceSearchEmpty
 	}
@@ -251,7 +235,8 @@ func (s *FaceRecognizeApp) FaceSearchByDatetime(ctx context.Context, req *pb.Fac
 
 	//按时间范围检索照片
 	if req.StartTime != "" && req.EndTime != "" {
-		fileInforesults, err := GetRangeFile(s.regService.Repo, req.StartTime, req.EndTime)
+		data, _ := s.RegService.FaceDb.ReadBatch()
+		fileInforesults, err := GetRangeFile(data, req.StartTime, req.EndTime)
 		if err != nil {
 			s.log.Errorw("GetRangeFile", err)
 			return nil, ErrorRequestFrom
@@ -296,22 +281,8 @@ func (s *FaceRecognizeApp) FaceDbReload(ctx context.Context, req *pb.EmptyReques
 		s.log.Infow("SDK加载db失败", err)
 	}
 
-	fileList, err1 := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
-	if err1 != nil {
-		s.log.Infow("GetFilesWithExtensions", err)
-		err = err1
-	} else {
-		s.log.Info("加载RegisteInfo")
-		for _, filename := range fileList {
-			t, _ := GetShootTime(filename)
-			s.regService.Repo.Store(filename, face_wrapper.RegisteInfo{
-				Filename:  filename,
-				ShootTime: t,
-			})
-		}
+	s.RegService.CheckExpired()
 
-	}
-
-	s.log.Info("【搜索服务】db复制并加载成功")
+	s.log.Info("【搜索服务】db复制并加载成功, 总数:", s.RegService.FaceDb.Count())
 	return &pb.NotifyReply{Ok: true}, nil
 }

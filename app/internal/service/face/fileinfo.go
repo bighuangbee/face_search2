@@ -2,12 +2,14 @@ package face
 
 import (
 	"errors"
+	"fmt"
 	"github.com/bighuangbee/face_search2/app/internal/service/face/face_recognize/face_wrapper"
+	"github.com/bighuangbee/face_search2/app/internal/service/storage"
 	"github.com/bighuangbee/face_search2/pkg/util"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/rwcarlsen/goexif/exif"
+	"golang.org/x/sys/unix"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -42,17 +44,9 @@ func LoadFileInfo(logger log.Logger) map[string]*FileInfo {
 }
 
 func GetShootTime(filename string) (time.Time, error) {
-	//////unix获取不到Btim
-	//var stat unix.Stat_t
-	//if err := unix.Stat(filename, &stat); err != nil {
-	//	return time.Time{}, err
-	//}
-	//
-	//return time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).In(location), nil
-
 	file, err := os.Open(filename)
 	if err != nil {
-		log.Fatalf("Error opening file: %v", err)
+		return time.Time{}, err
 	}
 	defer file.Close()
 
@@ -61,11 +55,19 @@ func GetShootTime(filename string) (time.Time, error) {
 		return time.Time{}, err
 	}
 	return x.DateTime()
+}
 
+func GetCreateTime(filename string) (time.Time, error) {
+	var stat unix.Stat_t
+	if err := unix.Stat(filename, &stat); err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec).In(location), nil
 }
 
 // GetRangeFile 查找在指定时间范围内的文件
-func GetRangeFile(fileInfoList sync.Map, startTimeStr string, endTimeStr string) (results []*face_wrapper.RegisteInfo, err error) {
+func GetRangeFile(fileInfoList []*storage.RegisteInfo, startTimeStr string, endTimeStr string) (results []*face_wrapper.RegisteInfo, err error) {
+	fmt.Println("GetRangeFile ", startTimeStr, endTimeStr)
 	startTime, err := time.Parse(timeFormat, startTimeStr)
 	if err != nil {
 		return nil, err
@@ -82,13 +84,13 @@ func GetRangeFile(fileInfoList sync.Map, startTimeStr string, endTimeStr string)
 	}
 
 	// 查找在指定时间范围内的文件
-	fileInfoList.Range(func(key, value any) bool {
-		info := value.(face_wrapper.RegisteInfo)
+	for _, value := range fileInfoList {
+		info := (*face_wrapper.RegisteInfo)(value)
+		fmt.Println("fileInfoList range  ", value.Filename, value.ShootTime.String(), info.ShootTime.After(startTime) && info.ShootTime.Before(endTime))
 		if info.ShootTime.After(startTime) && info.ShootTime.Before(endTime) {
-			results = append(results, &info)
+			results = append(results, info)
 		}
-		return true
-	})
+	}
 
 	return results, nil
 }

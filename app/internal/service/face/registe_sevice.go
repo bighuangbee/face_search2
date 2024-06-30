@@ -2,41 +2,40 @@ package face
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"github.com/bighuangbee/face_search2/app/internal/service/face/face_recognize/face_wrapper"
+	"github.com/bighuangbee/face_search2/app/internal/service/storage"
+	"github.com/bighuangbee/face_search2/pkg/conf"
 	"github.com/bighuangbee/face_search2/pkg/util"
 	"github.com/go-kratos/kratos/v2/log"
 	"os"
 	"path/filepath"
-	"sync"
+	"strings"
 	"time"
 )
 
 type RegisteService struct {
 	logger log.Logger
-	Repo   sync.Map
+	FaceDb storage.FaceDb
 	queue  chan *face_wrapper.RegisteInfo
+	bc     *conf.Bootstrap
 }
 
-func NewRegisteService(logger log.Logger) *RegisteService {
+func NewRegisteService(logger log.Logger, config *conf.Bootstrap) *RegisteService {
 	s := &RegisteService{
 		logger: logger,
 		queue:  make(chan *face_wrapper.RegisteInfo, 2000),
+		bc:     config,
 	}
 
-	fileData, err := os.ReadFile(registeLogFile)
-	if err != nil {
-		logger.Log(log.LevelInfo, "open registeLogFile", registeLogFile, "err", err)
+	fmt.Println("NewRegisteService 1")
+	var err error
+	if s.FaceDb, err = storage.NewMysqlStorage(config.Data, logger); err != nil {
+		logger.Log(log.LevelError, "storage.NewBoltDb", err)
+		panic(err)
 	}
-
-	data := []face_wrapper.RegisteInfo{}
-	if err := json.Unmarshal(fileData, &data); err != nil {
-		logger.Log(log.LevelInfo, "json.Unmarshal", err)
-	}
-
-	for _, item := range data {
-		s.Repo.Store(item.Filename, item)
-	}
+	fmt.Println("NewRegisteService 2")
+	s.logger.Log(log.LevelInfo, "face bb open success.")
 
 	return s
 }
@@ -50,7 +49,7 @@ func (s *RegisteService) PushQueue(filename string) {
 func (s *RegisteService) Run() {
 	for {
 		info := <-s.queue
-		_, ok := s.Repo.Load(info.Filename)
+		_, ok := s.FaceDb.Read(info.Filename)
 		if ok {
 			continue
 		}
@@ -62,13 +61,23 @@ func (s *RegisteService) Run() {
 			continue
 		}
 
-		s.Repo.Store(info.Filename, info)
-
 		s.logger.Log(log.LevelInfo, "注册结果 ok", regInfo.Ok, "fielname", info.Filename, "耗时", time.Since(t1))
 	}
 }
 
-func (s *RegisteService) Reg(filename string) (regInfo *face_wrapper.RegisteInfo, err error) {
+func (s *RegisteService) UnReg(filename string) {
+	if err := face_wrapper.UnRegiste(filename); err != nil {
+		s.logger.Log(log.LevelError, "face_wrapper.UnRegiste error", err, "filename", filename)
+	}
+	if err := s.FaceDb.Delete(filename); err != nil {
+		s.logger.Log(log.LevelError, "regService.FaceDb.Delete error", err, "filename", filename)
+	}
+	if err := os.Remove(filename); err != nil {
+		s.logger.Log(log.LevelError, "os.Remove error", err, "filename", filename)
+	}
+}
+
+func (s *RegisteService) Reg(filename string) (regInfo *storage.RegisteInfo, err error) {
 	imageFile, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -81,7 +90,11 @@ func (s *RegisteService) Reg(filename string) (regInfo *face_wrapper.RegisteInfo
 	}, filename)
 
 	bTime, _ := GetShootTime(filename)
-	regInfo = &face_wrapper.RegisteInfo{
+	if bTime.IsZero() {
+		bTime, _ = GetCreateTime(filename)
+	}
+
+	regInfo = &storage.RegisteInfo{
 		Filename:  filename,
 		Ok:        false,
 		Time:      util.GetLocTime(),
@@ -90,13 +103,53 @@ func (s *RegisteService) Reg(filename string) (regInfo *face_wrapper.RegisteInfo
 
 	if regError == nil {
 		regInfo.Ok = true
+		if err := s.FaceDb.Update(regInfo.Filename, regInfo); err != nil {
+			s.logger.Log(log.LevelError, "FaceDb.Update", err)
+		}
+
 	} else {
+		//注册失败的照片
 		os.Rename(filename, FACE_REGISTE_FAILED+"/"+time.Now().Format("20060102")+"_"+filepath.Base(filename))
 	}
 
-	str, _ := json.Marshal(&regInfo)
-	if err := util.CreateOrOpenFile(registeLogFile, string(str)); err != nil {
-		return nil, errors.New("CreateOrOpenFile " + err.Error())
-	}
+	str, _ := json.Marshal(regInfo)
+	util.CreateOrOpenFile(registeDataLogsDay, string(str))
+
 	return regInfo, nil
+}
+
+func (s RegisteService) CheckExpired() (values []*storage.RegisteInfo) {
+	//检查图片文件是否过期
+	fileList, _ := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
+	for _, filename := range fileList {
+		if strings.HasPrefix(filepath.Base(filename), "test_") {
+			return
+		}
+		st, _ := GetShootTime(filename)
+		isExpired := s.IsExpired(st)
+		if isExpired {
+			s.UnReg(filename)
+		}
+
+		s.logger.Log(log.LevelInfo, "CheckExpired, photo isExpired:", isExpired, "filename", filename, "ShootTime", st.String())
+	}
+
+	//检查特征库是否过期
+	expiredList, err := s.FaceDb.DeleteExpired(time.Duration(s.bc.Face.EffectiveTime) * time.Hour)
+	if err != nil {
+		s.logger.Log(log.LevelError, "FaceDb.DeleteExpired", err)
+		return
+	}
+	s.logger.Log(log.LevelInfo, "FaceDb, 清理特征库过期数量", len(expiredList))
+	return expiredList
+}
+
+func (s RegisteService) IsExpired(t time.Time) bool {
+	//todo
+	effectiveDuration := time.Duration(s.bc.Face.EffectiveTime) * time.Hour
+	cutoffTime := time.Now().Add(-effectiveDuration).In(location)
+	//fmt.Println("p------", cutoffTime.Format(time.DateTime), t.Format(time.DateTime), t.Before(cutoffTime), cutoffTime.Before(t))
+
+	return t.Before(cutoffTime)
+
 }

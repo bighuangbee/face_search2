@@ -144,3 +144,11 @@ func CreateOrOpenFile(filename, content string) error {
 	_, err = file.WriteString(content + "\n")
 	return err
 }
+
+func FileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}

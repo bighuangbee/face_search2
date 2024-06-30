@@ -5,6 +5,7 @@ server:
   env: "dev"
   http: #搜索服务
     addr: 0.0.0.0:6002
+
     timeout: 60s
 
 logger:
@@ -15,5 +16,14 @@ face:
   startUnRegiste: false #启动时注销以前的人脸
   match: 0.85
   matchTimeRange: 0 #只保留与算法匹配度最高的照片拍摄时间不超过matchTimeRange分钟， 0=不限制时间
-  registeSvcPath: ./registeSvcPath
-  searchSvcPath: ./searchSvcPath
+  registeSvcPath: /hiar_face/registeSvcPath
+  searchSvcPath: /hiar_face/searchSvcPath
+  effectiveTime: 24 #注册照片的有效时间，过期自动清理，单位小时
+
+data:
+  database:
+    driver: mysql
+    source: root:MySql!#123@tcp(192.168.1.134:23306)/face?charset=utf8mb4&parseTime=True&loc=Local
+    maxIdleConns: 10
+    maxOpenConns: 20
+    logLevel: 'info'

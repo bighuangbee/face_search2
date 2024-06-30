@@ -1,11 +1,11 @@
 package face
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/bighuangbee/face_search2/app/internal/service/face/face_recognize/face_wrapper"
 	"github.com/bighuangbee/face_search2/pkg/util"
+	"github.com/go-kratos/kratos/v2/log"
 	"io"
 	"net/http"
 	"os"
@@ -18,7 +18,7 @@ import (
  * @Desc  人脸注册图预处理
  * @return 已注册的人脸，待注册的新人脸
  **/
-func RegFilePreProcess() (registedSuccFace []string, registedFailedFace []string, newFace []string, err error) {
+func (s *RegisteService) RegFilePreProcess() (registedSuccFace []string, registedFailedFace []string, newFace []string, err error) {
 
 	//对容器内注册文件重命名
 	//files, err := util.GetFilesWithExtensions(FACE_REGISTE_PATH, face_wrapper.PictureExt)
@@ -46,23 +46,12 @@ func RegFilePreProcess() (registedSuccFace []string, registedFailedFace []string
 
 	//之前已注册的人脸
 	registedFaceMap := make(map[string]*face_wrapper.RegisteInfo)
-
-	file, err := os.Open(registeLogFile)
-	if err != nil {
-		return []string{}, []string{}, fileList, err
-	}
-	defer file.Close()
-
-	//检查注册日志，不重复注册
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := face_wrapper.RegisteInfo{}
-		json.Unmarshal(scanner.Bytes(), &line)
-		registedFaceMap[line.Filename] = &line
-	}
-
-	if err := scanner.Err(); err != nil {
-		return []string{}, []string{}, fileList, err
+	if registeData, err := s.FaceDb.ReadBatch(); err != nil {
+		s.logger.Log(log.LevelError, "FaceDb.ReadBatch", err)
+	} else {
+		for _, item := range registeData {
+			registedFaceMap[item.Filename] = (*face_wrapper.RegisteInfo)(item)
+		}
 	}
 
 	for _, filename := range fileList {
@@ -99,7 +88,7 @@ func (s *FaceRecognizeApp) registeFaceOneByOne(registedFace []string, newFace []
 
 	for index, filename := range newFace {
 		t1 := time.Now()
-		result, err := s.regService.Reg(filename)
+		result, err := s.RegService.Reg(filename)
 		if err == nil {
 			s.log.Errorw("注册出错", strconv.Itoa(index+1)+" "+filename, "耗时", time.Since(t1))
 			continue
@@ -147,7 +136,7 @@ func (s *FaceRecognizeApp) registeFace() {
 		}
 
 		str, _ := json.Marshal(&result)
-		if err := util.CreateOrOpenFile(registeLogFile, string(str)); err != nil {
+		if err := util.CreateOrOpenFile(registeDataLogs, string(str)); err != nil {
 			s.log.Errorw("CreateOrOpenFile", err)
 		}
 

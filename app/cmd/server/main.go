@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/bighuangbee/face_search2/pkg/conf"
 	logger2 "github.com/bighuangbee/face_search2/pkg/logger"
+	"github.com/bighuangbee/face_search2/pkg/util"
 	"github.com/go-kratos/kratos/v2"
 	"go.uber.org/zap/zapcore"
 	"os"
@@ -48,6 +49,7 @@ func newApp(logger log.Logger, hs *http.Server) *kratos.App {
 }
 
 func main() {
+
 	flag.Parse()
 
 	c := config.New(
@@ -73,7 +75,6 @@ func main() {
 			MaxSize:  20,
 		}),
 	}))
-
 	logger = log.With(logger,
 		//"ts", log.DefaultTimestamp,
 		"caller", log.DefaultCaller,
@@ -83,6 +84,11 @@ func main() {
 		//"trace.id", tracing.TraceID(),
 		//"span.id", tracing.SpanID(),
 	)
+
+	ok, err := isAfterSpecificDate()
+	if err != nil || ok {
+		os.Exit(1)
+	}
 
 	//服务模式：搜索
 	bc.Face.FaceMode = conf.FaceMode_search
@@ -102,14 +108,23 @@ func main() {
 }
 
 func registeRun(logger log.Logger) {
-	//等待主进程启动
 	time.Sleep(10 * time.Second)
 
 	//cmd := exec.Command("go", "run", "../registe/main.go")
 	//cmd := exec.Command("./registe-bin")
-	cmd := exec.Command("./registe-bin", "-conf", "/app/conf/config.yaml")
 
-	logger.Log(log.LevelInfo, "启动注册服务registe-bin", "")
+	if util.FileExists("/app/config/config6003.yaml") {
+		go func() {
+			cmd6003 := exec.Command("./srv-bin", "-conf", "/app/config/config6003.yaml")
+			err := cmd6003.Run()
+			if err != nil {
+				logger.Log(log.LevelError, "启动搜索服务 6003 failed", err)
+			}
+			logger.Log(log.LevelInfo, "启动搜索服务", "6003")
+		}()
+	}
+
+	cmd := exec.Command("./registe-bin", "-conf", "/app/config/config.yaml")
 	err := cmd.Run()
 	if err != nil {
 		logger.Log(log.LevelError, "cmd.Run() failed", err)
